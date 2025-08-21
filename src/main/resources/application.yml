@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: mongo-migrate-multids
+
+# Configure both source & target here
+data:
+  mongodb:
+    source:
+      uri: mongodb://10.0.60.125:27017/eos
+    target:
+      uri: mongodb://root:Vietnam2020@210.245.80.116:30001/eos?retryWrites=true&loadBalanced=false&connectTimeoutMS=10000&authSource=admin&authMechanism=SCRAM-SHA-1&helloOk=false
+
+logging:
+  level:
+    root: INFO
