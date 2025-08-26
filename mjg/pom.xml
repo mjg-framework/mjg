@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example.mjg</groupId>
+    <artifactId>mjg</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+
+    <properties>
+        <maven.compiler.version>3.14.0</maven.compiler.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <project.version>0.9.0-SNAPSHOT</project.version>
+        <project.dependencies.lombok.version>1.18.34</project.dependencies.lombok.version>
+        <project.dependencies.junit.version>5.13.4</project.dependencies.junit.version>
+        <project.dependencies.slf4j.version>2.0.16</project.dependencies.slf4j.version>
+        <project.dependencies.logback-classic.version>1.5.13</project.dependencies.logback-classic.version>
+        <project.dependencies.jackson.version>2.19.2</project.dependencies.jackson.version>
+        <project.dependencies.jackson.jsr310.version>2.19.2</project.dependencies.jackson.jsr310.version>
+        <project.dependencies.apache.commons.lang3.version>3.18.0</project.dependencies.apache.commons.lang3.version>
+    </properties>
+    
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.version}</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <modules>
+        <module>mjg-common</module>
+        <module>mjg-annotations</module>
+        <module>mjg-processor</module>
+        <module>mjg-core</module>
+    </modules>
+</project>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>mjg-processor</artifactId>
+    <version>0.9.0-SNAPSHOT</version>
+
+    <parent>
+        <groupId>com.example.mjg</groupId>
+        <artifactId>mjg</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.example.mjg</groupId>
+            <artifactId>mjg-common</artifactId>
+            <version>0.9.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.example.mjg</groupId>
+            <artifactId>mjg-annotations</artifactId>
+            <version>0.9.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${project.dependencies.lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+
+                    <!-- Only run Lombok, exclude our own annotation processor(s) -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${project.dependencies.lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
