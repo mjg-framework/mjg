@@ -38,5 +38,17 @@
             <artifactId>jackson-datatype-jsr310</artifactId>
             <version>${project.dependencies.jackson.jsr310.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${project.dependencies.slf4j.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${project.dependencies.logback-classic.version}</version>
+        </dependency>
     </dependencies>
 </project>

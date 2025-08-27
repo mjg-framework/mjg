@@ -91,7 +91,7 @@ type MigrationProgress_ObjectSchema = {
     "migrationProgress": {
         [fqcn: string]: {
             "fqcn": string,
-            "migratedRecords": Array<{ "id": string | number /* int, long */ }>,
+            "migratedRecords": Array<string | number /* int, long */>,
             "failedRecords": Array<{
                 "id": string | number /* int, long */,
                 "description": string,

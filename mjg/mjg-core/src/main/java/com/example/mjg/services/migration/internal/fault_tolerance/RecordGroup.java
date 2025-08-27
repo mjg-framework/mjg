@@ -1,11 +1,12 @@
 package com.example.mjg.services.migration.internal.fault_tolerance;
 
+import com.example.mjg.data.MigratableEntity;
 import com.example.mjg.services.migration.internal.MigrationRunner;
 
-import java.util.Set;
+import java.util.List;
 
 public interface RecordGroup {
-    Set<Object> getRecordIds();
+    List<MigratableEntity> getRecords();
 
     MigrationRunner getMigrationRunner();
 }

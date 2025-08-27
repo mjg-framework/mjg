@@ -3,8 +3,10 @@ package com.example.mjg.services.migration.internal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -21,12 +23,13 @@ import com.example.mjg.exceptions.BaseMigrationException;
 import com.example.mjg.exceptions.CardinalityViolationException;
 import com.example.mjg.exceptions.DuplicateDataException;
 import com.example.mjg.services.migration.internal.fault_tolerance.MigrationProgressManager;
+import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
 import com.example.mjg.services.migration.internal.reflective.RForEachRecordFrom;
 import com.example.mjg.services.migration.internal.reflective.RMatchWith;
 import com.example.mjg.services.migration.internal.reflective.RMigrationUtils;
 import com.example.mjg.services.migration.internal.reflective.RTransformAndSaveTo;
-import com.example.mjg.services.storage.MigrationRegistry;
-import com.example.mjg.services.storage.DataStoreRegistry;
+import com.example.mjg.storage.DataStoreRegistry;
+import com.example.mjg.storage.MigrationRegistry;
 import com.example.mjg.utils.DataStoreReflection;
 import lombok.Getter;
 
@@ -98,23 +101,62 @@ public class MigrationRunner {
         this.rMigrationUtils = new RMigrationUtils(storeRegistry, migrationClass, migrationInstance, rForEachRecordFrom, rMatchWiths, rTransformAndSaveTo);
     }
 
+    public void restoreProgress(MigrationProgress migrationProgress) {
+        this.migrationProgressManager.initialize(migrationProgress);
+    }
+
     public void run() {
-        @SuppressWarnings("unchecked")
-        DataStore<MigratableEntity, Object, Object> inputStore = (DataStore<MigratableEntity, Object, Object>) storeRegistry
-            .get(rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName());
-        
+        DataStore<MigratableEntity, Object, Object> inputStore = getDataStore(
+            rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
+        );
+        runInternal(inputStore, Map.of());
+    }
+
+    public void runWithRecordIdIn(Set<Object> recordIds) {
+        DataStore<MigratableEntity, Object, Object> inputStore = getDataStore(
+            rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
+        );
+        runInternal(
+            inputStore,
+            inputStore.getFiltersByIdIn(recordIds)
+        );
+    }
+
+    private void runInternal(
+        DataStore<MigratableEntity, Object, Object> inputStore,
+        Map<Object, Object> filters
+    ) {
         final int INPUT_BATCH_SIZE = rForEachRecordFrom.getForEachRecordFrom().batchSize();
         
-        DataPage<MigratableEntity, Object, Object> inputPage = inputStore.getFirstPageOfRecords(INPUT_BATCH_SIZE);
+        DataPage<MigratableEntity, Object, Object> inputPage = inputStore.getFirstPageOfRecordsWithFilter(
+            filters,
+            INPUT_BATCH_SIZE
+        );
         while (inputPage.getSize() > 0) {
+            // Filter out those that are already migrated
+            List<MigratableEntity> records = inputPage.getRecords();
+
+            Set<Object> inputRecordIds = records
+                .stream()
+                .map(MigratableEntity::getMigratableId)
+                .collect(Collectors.toCollection(HashSet::new));
+
+            migrationProgressManager.excludeSuccessfullyMigratedRecordIds(
+                this.migrationFQCN,
+                inputRecordIds
+            );
+
+            List<MigratableEntity> records = inputPage.getRecords()
+                .stream()
+                .filter()
             // Process
-            migrateRecords(inputPage.getRecords(), INPUT_BATCH_SIZE, inputPage.getPageNumber());
+            migrateRecords(inputPage.getRecords());
             // Next page
             inputPage = inputStore.getNextPageOfRecordsAfter(inputPage);
         }
     }
 
-    private void migrateRecords(List<MigratableEntity> inputRecords, int pageSize, int pageNumber) {
+    private void migrateRecords(List<MigratableEntity> inputRecords) {
         // Setup
         @SuppressWarnings("unchecked")
         DataStore<MigratableEntity, Object, Object> outputStore = (DataStore<MigratableEntity, Object, Object>) storeRegistry
@@ -138,12 +180,16 @@ public class MigrationRunner {
                 List<MigratableEntity> outputRecords = rMigrationUtils
                     .callTransformMethod(ctx.getAggregates(), ctx.getRecord());
 
-//                CardinalityCheck.checkConformant(
-//                    migrationFQCN,
-//                    rTransformAndSaveTo.getTransformAndSaveTo().toString(),
-//                    transformCardinality,
-//                    outputRecords.size()
-//                );
+                try {
+                    CardinalityCheck.checkConformant(
+                        migrationFQCN,
+                        rTransformAndSaveTo.getTransformAndSaveTo().toString(),
+                        transformCardinality,
+                        outputRecords.size()
+                    );
+                } catch (CardinalityViolationException e) {
+
+                }
 
                 return outputRecords;
             })
@@ -255,5 +301,11 @@ public class MigrationRunner {
             prioritizedOrdering = 1;
         }
         return prioritizedOrdering;
+    }
+
+    @SuppressWarnings("unchecked")
+    private DataStore<MigratableEntity, Object, Object> getDataStore(String fqcn) {
+        return (DataStore<MigratableEntity, Object, Object>) storeRegistry
+            .get(fqcn);
     }
 }

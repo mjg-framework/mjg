@@ -1,4 +1,4 @@
-package com.example.mjg.services.storage;
+package com.example.mjg.storage;
 
 import com.example.mjg.data.DataStore;
 import com.example.mjg.data.MigratableEntity;

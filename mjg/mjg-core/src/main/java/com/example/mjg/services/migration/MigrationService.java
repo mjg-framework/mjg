@@ -4,8 +4,8 @@ import com.example.mjg.processors.Migration.RuntimeMigration;
 import com.example.mjg.processors.Migration.RuntimeMigrationDataLocation;
 import com.example.mjg.services.migration.internal.MigrationRunner;
 import com.example.mjg.services.migration.internal.fault_tolerance.MigrationProgressManager;
-import com.example.mjg.services.storage.MigrationRegistry;
-import com.example.mjg.services.storage.DataStoreRegistry;
+import com.example.mjg.storage.DataStoreRegistry;
+import com.example.mjg.storage.MigrationRegistry;
 
 import lombok.AccessLevel;
 import lombok.Getter;

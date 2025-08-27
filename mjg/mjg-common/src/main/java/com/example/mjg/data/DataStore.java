@@ -4,12 +4,15 @@ import com.example.mjg.exceptions.BaseMigrationException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class DataStore<T extends MigratableEntity, FILTER_TYPE, FILTER_VALUE> {
     protected abstract List<T> doGetFirstPageOfRecordsWithFilter(
         Map<FILTER_TYPE, FILTER_VALUE> filters,
         int pageSize
-    ) throws BaseMigrationException, RuntimeException ;
+    ) throws BaseMigrationException, RuntimeException;
+
+    protected abstract Map<FILTER_TYPE, FILTER_VALUE> doMatchByIdIn(Set<Object> ids);
 
     protected abstract List<T> doGetNextPageOfRecordsAfter (
         DataPage<T, FILTER_TYPE, FILTER_VALUE> previousPage
@@ -23,10 +26,10 @@ public abstract class DataStore<T extends MigratableEntity, FILTER_TYPE, FILTER_
 
 
 
-    public final DataPage<T, FILTER_TYPE, FILTER_VALUE> getFirstPageOfRecords(int pageSize)
-    throws BaseMigrationException, RuntimeException {
-        return getFirstPageOfRecordsWithFilter(Map.of(), pageSize);
-    }
+    // public final DataPage<T, FILTER_TYPE, FILTER_VALUE> getFirstPageOfRecords(int pageSize)
+    // throws BaseMigrationException, RuntimeException {
+    //     return getFirstPageOfRecordsWithFilter(Map.of(), pageSize);
+    // }
 
     public final DataPage<T, FILTER_TYPE, FILTER_VALUE> getFirstPageOfRecordsWithFilter(
         Map<FILTER_TYPE, FILTER_VALUE> filters,
@@ -34,6 +37,18 @@ public abstract class DataStore<T extends MigratableEntity, FILTER_TYPE, FILTER_
     ) throws BaseMigrationException, RuntimeException {
         List<T> records = doGetFirstPageOfRecordsWithFilter(filters, pageSize);
         return new DataPage<>(this, 0, filters, records);
+    }
+
+    // public final DataPage<T, FILTER_TYPE, FILTER_VALUE> getFirstPageOfRecordsByIdIn(
+    //     Set<Object> ids,
+    //     int pageSize
+    // ) throws BaseMigrationException, RuntimeException {
+    //     Map<FILTER_TYPE, FILTER_VALUE> filters = doMatchByIdIn(ids);
+    //     return getFirstPageOfRecordsWithFilter(filters, pageSize);
+    // }
+
+    public final Map<FILTER_TYPE, FILTER_VALUE> getFiltersByIdIn(Set<Object> ids) {
+        return doMatchByIdIn(ids);
     }
 
     public final DataPage<T, FILTER_TYPE, FILTER_VALUE> getNextPageOfRecordsAfter(

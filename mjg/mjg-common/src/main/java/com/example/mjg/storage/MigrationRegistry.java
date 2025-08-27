@@ -1,4 +1,4 @@
-package com.example.mjg.services.storage;
+package com.example.mjg.storage;
 
 import lombok.NoArgsConstructor;
 

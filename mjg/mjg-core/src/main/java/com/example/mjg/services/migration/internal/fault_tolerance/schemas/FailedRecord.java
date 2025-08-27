@@ -19,13 +19,9 @@ public class FailedRecord implements Serializable {
 
     private String effect = "";
 
-    /**
-     * One of "RETRY" | "IGNORE"
-     * | "TAKE(0)" | "TAKE(1)" | "TAKE(N-2)" | "TAKE(N-1)"
-     * | ... TAKE(x) or TAKE(N - x) with x being a natural number
-     * See README.md
-     */
-    private String action = "RETRY";
+    private FailedRecordAction action = new FailedRecordAction(
+        FailedRecordAction.Type.RETRY
+    );
 
     private LocalDateTime timestamp;
 }

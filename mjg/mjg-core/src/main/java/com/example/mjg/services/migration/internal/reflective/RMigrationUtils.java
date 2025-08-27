@@ -8,8 +8,7 @@ import java.util.Map;
 
 import com.example.mjg.data.DataStore;
 import com.example.mjg.data.MigratableEntity;
-import com.example.mjg.services.storage.DataStoreRegistry;
-
+import com.example.mjg.storage.DataStoreRegistry;
 import com.example.mjg.utils.RMethodSignature;
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,7 +16,7 @@ import static lombok.Lombok.sneakyThrow;
 
 @Slf4j
 public class RMigrationUtils {
-    private final DataStoreRegistry storeRegistry;
+    private final DataStoreRegistry dataStoreRegistry;
     private final Class<?> migrationClass;
     private final Object migrationInstance;
 
@@ -33,7 +32,7 @@ public class RMigrationUtils {
         List<RMatchWith> rMatchWiths,
         RTransformAndSaveTo rTransformAndSaveTo
     ) {
-        this.storeRegistry = storeRegistry;
+        this.dataStoreRegistry = storeRegistry;
         this.migrationClass = migrationClass;
         this.migrationInstance = migrationInstance;
         this.rForEachRecordFrom = rForEachRecordFrom;
@@ -43,7 +42,7 @@ public class RMigrationUtils {
 
     public Map<Object, Object> callMatchingMethod(RMatchWith rMatchWith, MigratableEntity record) {
         String methodName = "matchWith" + rMatchWith.getMatchWith().value().getSimpleName();
-        DataStore<?, ?, ?> matchingStoreInstance = storeRegistry.get(rMatchWith.getDataStoreReflection().getStoreClass().getCanonicalName());
+        DataStore<?, ?, ?> matchingStoreInstance = dataStoreRegistry.get(rMatchWith.getDataStoreReflection().getStoreClass().getCanonicalName());
 
         final Method method;
         {
@@ -185,6 +184,72 @@ public class RMigrationUtils {
         }
 
         return records;
+    }
+
+    public List<MigratableEntity> callHandleDuplicateMethod(
+        MigratableEntity inputRecord,
+        List<MigratableEntity> outputRecordsFromTransform
+    ) {
+        DataStore<?, ?, ?> inputDataStoreInstance = dataStoreRegistry.get(
+            rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
+        );
+
+        DataStore<?, ?, ?> outputDataStoreInstance = dataStoreRegistry.get(
+            rTransformAndSaveTo.getDataStoreReflection().getStoreClass().getCanonicalName()
+        );
+
+        String methodName = "handleDuplicate";
+
+        final Method method;
+        {
+            Method cachedMethod = getCachedMethodByName(methodName);
+            if (cachedMethod != null) {
+                method = cachedMethod;
+            } else {
+                method = getMethodBySignatureAndCache(
+                    new RMethodSignature(
+                        methodName,
+                        List.of(
+                            rForEachRecordFrom.getDataStoreReflection().getEntityClass(),
+                            List.class,
+                            rForEachRecordFrom.getDataStoreReflection().getStoreClass(),
+                            rTransformAndSaveTo.getDataStoreReflection().getStoreClass(),
+                            DataStoreRegistry.class
+                        )
+                    )
+                );
+            }
+        }
+
+        List<MigratableEntity> resolvedRecords = null;
+        {
+            Object resolvedRecordsRaw = invokeMethod(
+                method,
+
+                inputRecord,
+                outputRecordsFromTransform,
+                inputDataStoreInstance,
+                outputDataStoreInstance,
+                dataStoreRegistry
+            );
+
+            if (resolvedRecordsRaw == null) {
+                resolvedRecords = null;
+            } else {
+                if (resolvedRecordsRaw instanceof List<?> list) {
+                    @SuppressWarnings("unchecked")
+                    List<MigratableEntity> castRecords = (List<MigratableEntity>) list;
+                    resolvedRecords = castRecords;
+                } else {
+                    throw new RuntimeException(
+                        "Could not cast return value of handleDuplicate method to List<?>: "
+                        + methodName + " from " + migrationClass.getCanonicalName()
+                    );
+                }
+            }
+        }
+
+        return resolvedRecords;
     }
 
     /**

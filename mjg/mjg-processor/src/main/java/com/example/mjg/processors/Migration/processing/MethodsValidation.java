@@ -1,6 +1,5 @@
 package com.example.mjg.processors.Migration.processing;
 
-import com.example.mjg.config.DuplicateResolution;
 import com.example.mjg.processors.ComptimeUtils;
 import com.example.mjg.processors.MethodPrototype;
 import com.example.mjg.processors.Migration.ComptimeMigration;
@@ -20,6 +19,7 @@ import javax.tools.Diagnostic;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import com.example.mjg.storage.DataStoreRegistry;
 
 public class MethodsValidation {
     @Getter
@@ -76,6 +76,9 @@ public class MethodsValidation {
             );
             requiredMethodPrototypes.addAll(
                 getStartReductionAndTransformMethodPrototypes()
+            );
+            requiredMethodPrototypes.addAll(
+                getDuplicateResolutionMethodPrototypes()
             );
             ensureMethodsExist(requiredMethodPrototypes);
         } catch (IllegalArgumentException | IllegalStateException exception) {
@@ -220,20 +223,38 @@ public class MethodsValidation {
         );
     }
 
-    private List<MethodPrototype> getDuplicateResolutionMethodPrototypesIfAny() {
-        Object rawDuplicateResolution = comptimeMigration
-            .getPTransformAndSaveTo()
-            .getAnnotationValues()
-            .get("inCaseOfDuplicate");
-
-        if (rawDuplicateResolution instanceof DuplicateResolution duplicateResolution) {
-            DuplicateResolution.Strategy strategy = duplicateResolution.strategy();
-            if (strategy == )
-        } else {
-            throw new IllegalStateException(
-                "Could not cast annotation value 'inCaseOfDuplicate' to @DuplicateResolution: "
-                + rawDuplicateResolution
-            );
+    private List<MethodPrototype> getDuplicateResolutionMethodPrototypes() {
+        /*
+        public List<B> handleDuplicate(
+            A inputRecord,
+            List<B> outputRecords, // records you returned from .transform()
+            AStore inputDataStore,
+            BStore outputDataStore,
+            DataStoreRegistry dataStoreRegistry
+        ) {
+            // ...
         }
+         */
+
+        var typeListOutputRecords = typeUtils.getDeclaredType(
+            elementUtils.getTypeElement("java.util.List"),
+            outputEntityType
+        );
+
+        return List.of(
+            new MethodPrototype(
+                typeListOutputRecords,
+
+                "handleDuplicate",
+
+                List.of(
+                    inputEntityType,
+                    typeListOutputRecords,
+                    srcStoreType,
+                    destStoreType,
+                    elementUtils.getTypeElement(DataStoreRegistry.class.getCanonicalName()).asType()
+                )
+            )
+        );
     }
 }
