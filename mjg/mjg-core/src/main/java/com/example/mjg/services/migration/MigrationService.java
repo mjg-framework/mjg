@@ -2,7 +2,7 @@ package com.example.mjg.services.migration;
 
 import com.example.mjg.processors.Migration.RuntimeMigration;
 import com.example.mjg.processors.Migration.RuntimeMigrationDataLocation;
-import com.example.mjg.services.migration.internal.MigrationRunner;
+import com.example.mjg.services.migration.internal.migration_runner.MigrationRunner;
 import com.example.mjg.services.migration.internal.fault_tolerance.MigrationProgressManager;
 import com.example.mjg.storage.DataStoreRegistry;
 import com.example.mjg.storage.MigrationRegistry;

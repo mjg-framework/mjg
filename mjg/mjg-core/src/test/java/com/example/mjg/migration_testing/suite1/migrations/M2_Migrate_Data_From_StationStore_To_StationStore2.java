@@ -4,8 +4,6 @@ import com.example.mjg.annotations.ForEachRecordFrom;
 import com.example.mjg.annotations.Migration;
 import com.example.mjg.annotations.TransformAndSaveTo;
 import com.example.mjg.config.Cardinality;
-import com.example.mjg.config.DuplicateResolution;
-import com.example.mjg.config.ErrorResolution;
 import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore2;
@@ -17,9 +15,7 @@ import java.util.Map;
 @ForEachRecordFrom(StationStore.class)
 @TransformAndSaveTo(
     value = StationStore2.class,
-    cardinality = Cardinality.EXACTLY_ONE,
-    inCaseOfError = @ErrorResolution(strategy = ErrorResolution.Strategy.STOP_IMMEDIATELY_AND_REPORT),
-    inCaseOfDuplicate = @DuplicateResolution(strategy = DuplicateResolution.Strategy.THROW_ERROR)
+    cardinality = Cardinality.EXACTLY_ONE
 )
 public class M2_Migrate_Data_From_StationStore_To_StationStore2 {
     public void startReduction(Map<String, Object> aggregates) {}

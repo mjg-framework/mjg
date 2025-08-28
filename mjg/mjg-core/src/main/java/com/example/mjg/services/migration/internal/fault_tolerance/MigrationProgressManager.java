@@ -129,6 +129,8 @@ public class MigrationProgressManager {
 
             return migrationProgress;
         });
+
+        log.error("Some records failed to migrate: " + failedRecordGroup.getException());
     }
 
     public void excludeSuccessfullyMigratedRecordIds(
@@ -147,6 +149,15 @@ public class MigrationProgressManager {
                 .getMigratedRecordIds();
             
             recordIds.removeAll(migratedRecordIds);
+        });
+    }
+
+    public void reportFatalError(Exception exception) {
+        migrationProgressContainer.update(migrationProgress -> {
+            migrationProgress.getFatalErrors().add(
+                ExceptionUtils.getStackTrace(exception)
+            );
+            return migrationProgress;
         });
     }
 

@@ -5,8 +5,6 @@ import com.example.mjg.annotations.MatchWith;
 import com.example.mjg.annotations.Migration;
 import com.example.mjg.annotations.TransformAndSaveTo;
 import com.example.mjg.config.Cardinality;
-import com.example.mjg.config.DuplicateResolution;
-import com.example.mjg.config.ErrorResolution;
 import com.example.mjg.migration_testing.suite1.data.entities.IndicatorEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity;
@@ -22,15 +20,12 @@ import java.util.Map;
 @Migration
 @ForEachRecordFrom(StationStore.class)
 @MatchWith(
-        value = IndicatorStore.class,
-        cardinality = Cardinality.ZERO_OR_MORE,
-        inCaseOfError = @ErrorResolution(strategy = ErrorResolution.Strategy.STOP_IMMEDIATELY_AND_REPORT)
+    value = IndicatorStore.class,
+    cardinality = Cardinality.ZERO_OR_MORE
 )
 @TransformAndSaveTo(
     value = StationIndicatorStore.class,
-    cardinality = Cardinality.ZERO_OR_MORE,
-    inCaseOfError = @ErrorResolution(strategy = ErrorResolution.Strategy.STOP_IMMEDIATELY_AND_REPORT),
-    inCaseOfDuplicate = @DuplicateResolution(strategy = DuplicateResolution.Strategy.REPORT_AND_PROCEED)
+    cardinality = Cardinality.ZERO_OR_MORE
 )
 public class M1_PopulatePivotTable_StationIndicators {
     public Map<FilterIndicatorsBy, Object> matchWithIndicatorStore(

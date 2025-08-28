@@ -24,18 +24,15 @@ import java.util.Map;
 @ForEachRecordFrom(StationIndicatorStore.class)
 @MatchWith(
     value = StationStore2.class,
-    cardinality = Cardinality.EXACTLY_ONE,
-    inCaseOfError = @ErrorResolution(strategy = ErrorResolution.Strategy.FINISH_THE_MIGRATION_THEN_STOP_AND_REPORT)
+    cardinality = Cardinality.EXACTLY_ONE
 )
 @MatchWith(
     value = MeasurementResultStore.class,
-    cardinality = Cardinality.ZERO_OR_MORE,
-    inCaseOfError = @ErrorResolution(strategy = ErrorResolution.Strategy.REPORT_AND_PROCEED)
+    cardinality = Cardinality.ZERO_OR_MORE
 )
 @TransformAndSaveTo(
     value = StationIndicatorStore2.class,
-    cardinality = Cardinality.EXACTLY_ONE,
-    inCaseOfError = @ErrorResolution(strategy = ErrorResolution.Strategy.REPORT_AND_PROCEED)
+    cardinality = Cardinality.EXACTLY_ONE
 )
 public class M3_Migrate_StationIndicator2 {
     public Map<FilterStationsBy2, Object> matchWithStationStore2(

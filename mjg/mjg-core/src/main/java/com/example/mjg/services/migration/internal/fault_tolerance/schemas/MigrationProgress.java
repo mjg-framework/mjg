@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 @AllArgsConstructor
@@ -15,4 +16,6 @@ public class MigrationProgress {
     private MigrationProgressMetadata metadata = new MigrationProgressMetadata();
 
     private HashMap<String, MigrationProgressPerMigrationClass> migrationProgress = new HashMap<>();
+
+    private ArrayList<String> fatalErrors = new ArrayList<>();
 }

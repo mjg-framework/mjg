@@ -16,7 +16,11 @@ public @interface TransformAndSaveTo {
 
     Cardinality cardinality() default Cardinality.EXACTLY_ONE;
 
-    ErrorResolution inCaseOfError();
+    ErrorResolution inCaseOfError() default @ErrorResolution;
 
     int batchSize() default 512;
+
+    int retries() default 1;
+
+    int retryDelayInSeconds() default 3;
 }

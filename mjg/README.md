@@ -106,6 +106,8 @@ type MigrationProgress_ObjectSchema = {
             }>,
         },
     },
+    
+    "fataLErrors": Array<string>,
 }
 ```
 
@@ -323,7 +325,7 @@ them are configured in `@ErrorResolution`.
 If the input record still fails to migrate
 after all this, it will be reported in the
 `MigrationProgress` JSON object, and, depending
-on the error resolution strategy, the migration
+on the error resolution settings, the migration
 process could continue or stop.
 
 ## Cautions on Writing Migration Code
@@ -386,9 +388,8 @@ public List<StationEntity> transform(
 
 ### Robustness
 
-If the error resolution strategy is set to
-`FINISH_THE_MIGRATION_THEN_STOP_AND_REPORT`,
-in case of error, mjg would finish the
+When any record in a migration fails
+to migrate, mjg would finish the
 appropriate migration and stop the migration
 process altogether.
 

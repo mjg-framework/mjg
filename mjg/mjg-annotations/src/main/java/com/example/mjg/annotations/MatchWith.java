@@ -14,7 +14,7 @@ public @interface MatchWith {
 
     Cardinality cardinality() default Cardinality.EXACTLY_ONE;
 
-    ErrorResolution inCaseOfError();
+    ErrorResolution inCaseOfError() default @ErrorResolution;
 
     int batchSize() default 512;
 

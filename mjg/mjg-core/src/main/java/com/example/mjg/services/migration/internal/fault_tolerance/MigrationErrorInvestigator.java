@@ -2,7 +2,8 @@ package com.example.mjg.services.migration.internal.fault_tolerance;
 
 import com.example.mjg.config.ErrorResolution;
 import com.example.mjg.data.MigratableEntity;
-import com.example.mjg.services.migration.internal.MigrationRunner;
+import com.example.mjg.exceptions.RetriesExhaustedException;
+import com.example.mjg.services.migration.internal.migration_runner.MigrationRunner;
 
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -99,7 +100,7 @@ public class MigrationErrorInvestigator {
             }
             pool.shutdown();
             // wait until all tasks are done
-            pool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+            boolean ignored = pool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
         } catch (InterruptedException e) {
             // if this thread is interrupted, handle appropriately
             pool.shutdownNow();
@@ -132,19 +133,22 @@ public class MigrationErrorInvestigator {
                 int mid = N / 2;
                 List<MigratableEntity> firstHalfRecords = records.subList(0, mid);
                 List<MigratableEntity> secondHalfRecords = records.subList(mid, N);
-                migrationRunner.runWithRecordIdIn(firstHalfRecords.stream().map(MigratableEntity::getMigratableId).collect(Collectors.toSet()));
-                migrationRunner.runWithRecordIdIn(secondHalfRecords.stream().map(MigratableEntity::getMigratableId).collect(Collectors.toSet()));
+                try {
+                    migrationRunner.runWithRecordIdIn(firstHalfRecords.stream().map(MigratableEntity::getMigratableId).collect(Collectors.toSet()));
+                } catch (RetriesExhaustedException ignored) {}
+                try {
+                    migrationRunner.runWithRecordIdIn(secondHalfRecords.stream().map(MigratableEntity::getMigratableId).collect(Collectors.toSet()));
+                } catch (RetriesExhaustedException ignored) {}
             } else if (N == 0) {
                 continue;
-            } else if (N == 1) {
+            } else {
+                // N == 1
                 // This record group got sent here because records
                 // in it failed to migrate. Here the group consists
                 // of just ONE record.
                 // So we IDENTIFIED the culprit - report it.
 
                 this.migrationProgressManager.reportFailedRecords(failedRecordGroup);
-            } else {
-                throw new RuntimeException("unreachable: N = " + N);
             }
         }
     }
