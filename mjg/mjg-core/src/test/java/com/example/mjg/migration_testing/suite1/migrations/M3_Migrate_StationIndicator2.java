@@ -5,7 +5,6 @@ import com.example.mjg.annotations.MatchWith;
 import com.example.mjg.annotations.Migration;
 import com.example.mjg.annotations.TransformAndSaveTo;
 import com.example.mjg.config.Cardinality;
-import com.example.mjg.config.ErrorResolution;
 import com.example.mjg.migration_testing.suite1.data.entities.MeasurementResultEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity;
@@ -16,6 +15,7 @@ import com.example.mjg.migration_testing.suite1.data.stores.MeasurementResultSto
 import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore2;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore2;
+import com.example.mjg.storage.DataStoreRegistry;
 
 import java.util.List;
 import java.util.Map;
@@ -101,5 +101,15 @@ public class M3_Migrate_StationIndicator2 {
                     average
                 )
         );
+    }
+
+    public List<StationIndicatorEntity2> handleDuplicate(
+        StationIndicatorEntity inputRecord,
+        List<StationIndicatorEntity2> outputRecords,
+        StationIndicatorStore stationIndicatorStore,
+        StationIndicatorStore2 saStationIndicatorStore2,
+        DataStoreRegistry dataStoreRegistry
+    ) {
+        return null;
     }
 }

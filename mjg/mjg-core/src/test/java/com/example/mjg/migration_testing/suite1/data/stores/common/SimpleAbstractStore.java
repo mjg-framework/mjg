@@ -3,6 +3,9 @@ package com.example.mjg.migration_testing.suite1.data.stores.common;
 import com.example.mjg.data.DataPage;
 import com.example.mjg.data.DataStore;
 import com.example.mjg.data.MigratableEntity;
+import com.example.mjg.exceptions.BaseMigrationException;
+import com.example.mjg.exceptions.DuplicateDataException;
+
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -46,11 +49,13 @@ public abstract class SimpleAbstractStore<T extends MigratableEntity, ID, FILTER
     }
 
     @Override
-    protected void doSave(T record) {
+    protected void doSave(T record)
+    throws BaseMigrationException {
         for (T existingRecord : records) {
             if (getRecordId(existingRecord).equals(getRecordId(record))) {
-                assignRecordExceptId(existingRecord, record);
-                return;
+                throw new DuplicateDataException("A record with the same ID already exist");
+                // assignRecordExceptId(existingRecord, record);
+                // return;
             }
         }
 
@@ -61,7 +66,8 @@ public abstract class SimpleAbstractStore<T extends MigratableEntity, ID, FILTER
     }
 
     @Override
-    protected void doSaveMultiple(List<T> records) {
+    protected void doSaveMultiple(List<T> records)
+    throws BaseMigrationException {
         for (T newRecord : records) {
             doSave(newRecord);
         }

@@ -17,8 +17,6 @@ public class FailedRecord implements Serializable {
 
     private String cause = "";
 
-    private String effect = "";
-
     private FailedRecordAction action = new FailedRecordAction(
         FailedRecordAction.Type.RETRY
     );

@@ -1,9 +1,11 @@
 package com.example.mjg.services.migration;
 
+import com.example.mjg.exceptions.RetriesExhaustedException;
 import com.example.mjg.processors.Migration.RuntimeMigration;
 import com.example.mjg.processors.Migration.RuntimeMigrationDataLocation;
 import com.example.mjg.services.migration.internal.migration_runner.MigrationRunner;
 import com.example.mjg.services.migration.internal.fault_tolerance.MigrationProgressManager;
+import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
 import com.example.mjg.storage.DataStoreRegistry;
 import com.example.mjg.storage.MigrationRegistry;
 
@@ -14,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.function.Consumer;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @Slf4j
@@ -35,7 +38,21 @@ public class MigrationService {
     @Getter
     private final MigrationProgressManager migrationProgressManager = new MigrationProgressManager();
 
-    public void run() {
+    public void run(MigrationProgress previousProgress) {
+        migrationProgressManager.restorePreviousProgress(previousProgress);
+        _run();
+    }
+
+    public void runWithPreviousProgress() {
+        _run();
+    }
+    
+    public void runWithoutPreviousProgress() {
+        migrationProgressManager.restorePreviousProgress(new MigrationProgress());
+        _run();
+    }
+
+    private void _run() {
         List<RuntimeMigration> sortedMigrations = getSortedMigrations();
 
         System.out.println("Loading compiled migration ordering: " + sortedMigrations);
@@ -52,9 +69,24 @@ public class MigrationService {
 
         for (MigrationRunner runner : migrationRunners) {
             log.info("Starting migration: " + runner.getMigrationFQCN());
-            runner.run();
+            try {
+                runner.run();
+            } catch (RetriesExhaustedException exception) {
+                log.info("Error while running migration: " + runner.getMigrationFQCN());
+                log.info("Stopping migration process altogether");
+            }
             log.info("Finished migration: " + runner.getMigrationFQCN());
         }
+    }
+    
+    public void addProgressPersistenceCallback(
+        Consumer<MigrationProgress> callback
+    ) {
+        migrationProgressManager.addProgressPersistenceCallback(callback);
+    }
+
+    public void removeAllProgressPersistenceCallbacks() {
+        migrationProgressManager.removeAllProgressPersistenceCallbacks();
     }
 
     @SuppressWarnings("unchecked")

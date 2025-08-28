@@ -14,6 +14,7 @@ import com.example.mjg.data.MigratableEntity;
 import com.example.mjg.exceptions.RetriesExhaustedException;
 import com.example.mjg.services.migration.internal.RecordProcessingContext;
 import com.example.mjg.services.migration.internal.fault_tolerance.MigrationProgressManager;
+import com.example.mjg.services.migration.internal.fault_tolerance.SuccessfulRecordGroup;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
 import com.example.mjg.services.migration.internal.reflective.RForEachRecordFrom;
 import com.example.mjg.services.migration.internal.reflective.RMatchWith;
@@ -111,7 +112,7 @@ public class MigrationRunner {
 
 
     public void restoreProgress(MigrationProgress migrationProgress) {
-        this.migrationProgressManager.initialize(migrationProgress);
+        this.migrationProgressManager.restorePreviousProgress(migrationProgress);
     }
 
     public void run()
@@ -189,6 +190,9 @@ public class MigrationRunner {
     throws RetriesExhaustedException {
         List<RecordProcessingContext> inputContexts = matchAndReduceRunner.run(inputRecords);
         transformAndSaveRunner.run(inputContexts);
+        migrationProgressManager.reportSuccessfulRecords(
+            new SuccessfulRecordGroup(inputRecords, this)
+        );
     }
 
     private static List<MatchWith> buildMatchingPlan(MatchWith[] matchWiths) {

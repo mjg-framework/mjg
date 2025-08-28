@@ -4,6 +4,8 @@ import com.example.mjg.migration_testing.suite1.data.entities.MeasurementResultE
 import com.example.mjg.migration_testing.suite1.data.filtering.FilterMeasurementResultsBy;
 import com.example.mjg.migration_testing.suite1.data.stores.common.IntegerIDAbstractStore;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public class MeasurementResultStore extends IntegerIDAbstractStore<MeasurementResultEntity, FilterMeasurementResultsBy, Object> {
@@ -12,6 +14,12 @@ public class MeasurementResultStore extends IntegerIDAbstractStore<MeasurementRe
         if (filterType == FilterMeasurementResultsBy.ID) {
             return recordStream.filter(record -> record.getId().equals(filterValue));
         }
+
+        if (filterType == FilterMeasurementResultsBy.ID_IN) {
+            @SuppressWarnings("unchecked")
+            Set<Integer> idIn = (Set<Integer>) filterValue;
+            return recordStream.filter(record -> idIn.contains(record.getId()));
+       }
 
         if (filterType == FilterMeasurementResultsBy.STATION_INDICATOR_ID) {
             return recordStream.filter(record -> record.getStationIndicatorCode().equals(filterValue));
@@ -34,5 +42,13 @@ public class MeasurementResultStore extends IntegerIDAbstractStore<MeasurementRe
     protected void assignRecordExceptId(MeasurementResultEntity dest, MeasurementResultEntity src) {
         dest.setValue(src.getValue());
         dest.setStationIndicatorCode(src.getStationIndicatorCode());
+    }
+
+    @Override
+    protected Map<FilterMeasurementResultsBy, Object> doMatchByIdIn(Set<Object> ids) {
+        return Map.of(
+            FilterMeasurementResultsBy.ID_IN,
+            ids
+        );
     }
 }

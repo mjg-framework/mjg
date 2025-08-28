@@ -125,12 +125,26 @@ class TransformAndSaveRunner {
                     migrationRunner.getOutputStore()
                         .saveMultiple(ctx.getOutputRecords());
                 } catch (DuplicateDataException e) {
-                    migrationRunner.getRMigrationUtils()
+                    List<MigratableEntity> newOutputRecords = migrationRunner
+                        .getRMigrationUtils()
                         .callHandleDuplicateMethod(
                             ctx.getInputRecord(),
                             ctx.getOutputRecords()
                         );
+                    
+                    if (newOutputRecords == null) {
+                        throw e;
+                    }
+                    
+                    // TODO: This trick will only work if we run everything
+                    // TODO: in the same thread (which we currently do, but
+                    // TODO: not so sure in the future!)
+                    ctx.getOutputRecords().clear();
+                    ctx.getOutputRecords().addAll(newOutputRecords);
+
                     // further exception
+                    migrationRunner.getOutputStore()
+                        .saveMultiple(ctx.getOutputRecords());
                 }   // or any other exception
                 // is handled by retryLogic
                 return null;

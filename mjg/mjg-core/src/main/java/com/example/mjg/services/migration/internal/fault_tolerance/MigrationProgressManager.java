@@ -1,6 +1,5 @@
 package com.example.mjg.services.migration.internal.fault_tolerance;
 
-import com.example.mjg.config.ErrorResolution;
 import com.example.mjg.data.MigratableEntity;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.FailedRecord;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.FailedRecordAction;
@@ -23,18 +22,20 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 public class MigrationProgressManager {
     ConcurrentContainer<
         MigrationProgress
-    > migrationProgressContainer = new ConcurrentContainer<>(null);
+    > migrationProgressContainer;
 
     ConcurrentContainer<
         List<Consumer<MigrationProgress>>
-    > onProgressPersistenceCallbacksContainer = new ConcurrentContainer<>(
-        new ArrayList<>()
-    );
+    > onProgressPersistenceCallbacksContainer;
 
     public MigrationProgressManager() {
+        this.migrationProgressContainer = new ConcurrentContainer<>(new MigrationProgress());
+        this.onProgressPersistenceCallbacksContainer = new ConcurrentContainer<>(
+            new ArrayList<>()
+        );
         Runtime.getRuntime().addShutdownHook(
             new Thread(() -> {
-                log.info("SIGTERM received, stopping gracefully. Please do not kill this process!");
+                log.info("Stopping gracefully. Please do not kill this process!");
 
                 try {
                     // Wait for stuff to finalize
@@ -46,25 +47,43 @@ public class MigrationProgressManager {
                         log.warn("Migration progress is null, ignoring persistence callbacks");
                     }
                     onProgressPersistenceCallbacksContainer.read(callbacks -> {
+                        if (callbacks.isEmpty()) {
+                            log.warn("No callback to save migration progress. You are at risk of losing progress.");
+                            // TODO: Write directly into file here - any will work.
+                        }
                         callbacks.forEach(callback -> {
-                            callback.accept(migrationProgress);
+                            try {
+                                callback.accept(migrationProgress);
+                            } catch (Exception e) {
+                                log.error(
+                                    "Error while running progress persistence callback, but will be ignored",
+                                    e
+                                );
+                            }
                         });
                     });
                 });
-                log.info("OK");
+                log.info("Gracefully stopped");
             })
         );
     }
 
-    public void onProgressPersistence(Consumer<MigrationProgress> onProgressPersistenceCallback) {
+    public void addProgressPersistenceCallback(Consumer<MigrationProgress> onProgressPersistenceCallback) {
         onProgressPersistenceCallbacksContainer.update(callbacks -> {
             callbacks.add(onProgressPersistenceCallback);
             return callbacks;
         });
     }
 
-    public void initialize(MigrationProgress migrationProgress) {
-        migrationProgressContainer.update(_oldMigrationProgress -> migrationProgress);
+    public void removeAllProgressPersistenceCallbacks() {
+        onProgressPersistenceCallbacksContainer.update(callbacks -> {
+            callbacks.clear();
+            return callbacks;
+        });
+    }
+
+    public void restorePreviousProgress(MigrationProgress previousProgress) {
+        migrationProgressContainer.update(_oldMigrationProgress -> previousProgress);
     }
 
     public void reportSuccessfulRecords(
@@ -96,9 +115,6 @@ public class MigrationProgressManager {
         assertProgressInitialized();
 
         String cause = ExceptionUtils.getRootCauseMessage(failedRecordGroup.getException());
-        ErrorResolution.Strategy errorResolutionStrategy = failedRecordGroup
-            .getErrorResolution().strategy();
-        String effect = errorResolutionStrategy.toString();
 
         migrationProgressContainer.update(migrationProgress -> {
             MigrationProgressPerMigrationClass progressInThisMigrationClass = migrationProgress
@@ -115,12 +131,7 @@ public class MigrationProgressManager {
                             failedRecord.getMigratableId(),
                             failedRecord.getMigratableDescription(),
                             cause,
-                            effect,
-                            (
-                                errorResolutionStrategy == ErrorResolution.Strategy.REPORT_AND_PROCEED
-                                ? new FailedRecordAction(FailedRecordAction.Type.IGNORE)
-                                : new FailedRecordAction(FailedRecordAction.Type.RETRY)
-                            ),
+                            new FailedRecordAction(FailedRecordAction.Type.RETRY),
                             LocalDateTime.now()
                         );
                     })

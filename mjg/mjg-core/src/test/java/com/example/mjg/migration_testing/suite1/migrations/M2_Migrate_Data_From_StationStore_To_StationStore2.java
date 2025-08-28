@@ -7,6 +7,7 @@ import com.example.mjg.config.Cardinality;
 import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore2;
+import com.example.mjg.storage.DataStoreRegistry;
 
 import java.util.List;
 import java.util.Map;
@@ -30,5 +31,15 @@ public class M2_Migrate_Data_From_StationStore_To_StationStore2 {
             station.getStationName()
         );
         return List.of(newStation);
+    }
+
+    public List<StationEntity> handleDuplicate(
+        StationEntity inputRecord,
+        List<StationEntity> outputRecords,
+        StationStore stationStore,
+        StationStore2 stationStore2,
+        DataStoreRegistry dataStoreRegistry
+    ) {
+        return null;
     }
 }

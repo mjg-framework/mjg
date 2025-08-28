@@ -50,5 +50,11 @@
             <artifactId>logback-classic</artifactId>
             <version>${project.dependencies.logback-classic.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${project.dependencies.apache.commons.lang3.version}</version>
+        </dependency>
     </dependencies>
 </project>

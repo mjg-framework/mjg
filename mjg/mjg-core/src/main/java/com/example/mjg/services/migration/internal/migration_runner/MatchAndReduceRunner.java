@@ -82,7 +82,7 @@ public class MatchAndReduceRunner {
             .withCallback((Map<Object, Object> filters) -> store.getFirstPageOfRecordsWithFilter((Map) filters, BATCH_SIZE));
 
         var getNextPageOfRecordsAfter = retryLogic
-            .withCallback(store::getNextPageOfRecordsAfter);
+            .withCallback(((DataStore<MigratableEntity, Object, Object>) store)::getNextPageOfRecordsAfter);
 
         // Group records by matching filter sets
         Map<Map<Object, Object>, List<RecordProcessingContext>> recordContextsByFiltersMap = recordContexts.stream()
@@ -107,7 +107,10 @@ public class MatchAndReduceRunner {
                         List<MigratableEntity> moreMatchingRecords = (List<MigratableEntity>) matchingPage.getRecords();
                         numMatchingRecords += moreMatchingRecords.size();
 
-                        CardinalityCheck.checkConformantInProgress(migrationFQCN, rMatchWith.getMatchWith().toString(), cardinality, numMatchingRecords);
+                        CardinalityCheck.checkConformantInProgress(
+                            migrationFQCN, rMatchWith.getMatchWith().toString(), cardinality,
+                            numMatchingRecords, moreMatchingRecords
+                        );
 
                         // TODO: Parallel streaming here might improve speed,
                         // TODO: but ctx.getAggregates() is being mutated, so...

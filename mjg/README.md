@@ -5,6 +5,8 @@ applications.
 
 ## Compilation
 
+### Stale Compiler State
+
 If you change the source code of any
 annotation processor, be sure to recompile.
 
@@ -32,6 +34,47 @@ build, which will not run mjg's annotation
 processor fully and properly, leading
 to errors such as missing migrations
 in runtime.
+
+### Error from mjg annotation processors
+
+If one of your `@Migration` classes has errors,
+mjg annotation processors would print them
+out during compilation. Don't be scared of
+them! Just read through to fix what went wrong.
+
+For example, following are the messages from
+mjg that those `@Migration` classes did not
+implement a `handleDuplicate` method.
+
+```plain
+Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.0:testCompile (default-testCompile) on project mjg-core: Compilation failure: Compilation failure: 
+[ERROR] Migration class com.example.mjg.migration_testing.suite1.migrations.M1_PopulatePivotTable_StationIndicators is missing the following methods:
+[ERROR]       1. java.util.List<com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity>   handleDuplicate(
+[ERROR]           com.example.mjg.migration_testing.suite1.data.entities.StationEntity var1,
+[ERROR]           java.util.List<com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity> var2,
+[ERROR]           com.example.mjg.migration_testing.suite1.data.stores.StationStore var3,
+[ERROR]           com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore var4,
+[ERROR]           com.example.mjg.storage.DataStoreRegistry var5
+[ERROR]       )
+[ERROR] Migration class com.example.mjg.migration_testing.suite1.migrations.M2_Migrate_Data_From_StationStore_To_StationStore2 is missing the following methods:
+[ERROR]       1. java.util.List<com.example.mjg.migration_testing.suite1.data.entities.StationEntity>   handleDuplicate(
+[ERROR]           com.example.mjg.migration_testing.suite1.data.entities.StationEntity var1,
+[ERROR]           java.util.List<com.example.mjg.migration_testing.suite1.data.entities.StationEntity> var2,
+[ERROR]           com.example.mjg.migration_testing.suite1.data.stores.StationStore var3,
+[ERROR]           com.example.mjg.migration_testing.suite1.data.stores.StationStore2 var4,
+[ERROR]           com.example.mjg.storage.DataStoreRegistry var5
+[ERROR]       )
+[ERROR] Migration class com.example.mjg.migration_testing.suite1.migrations.M3_Migrate_StationIndicator2 is missing the following methods:
+[ERROR]       1. java.util.List<com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity2>   handleDuplicate(
+[ERROR]           com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity var1,
+[ERROR]           java.util.List<com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity2> var2,
+[ERROR]           com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore var3,
+[ERROR]           com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore2 var4,
+[ERROR]           com.example.mjg.storage.DataStoreRegistry var5
+[ERROR]       )
+```
+
+More about this method [in this section](#duplicate-error-handling).
 
 ## State Persistence and Error Handling
 
@@ -96,7 +139,6 @@ type MigrationProgress_ObjectSchema = {
                 "id": string | number /* int, long */,
                 "description": string,
                 "cause": string,
-                "effect": string,
                 "action": "IGNORE"
                     | "RETRY"
                     | "TAKE(0)" | "TAKE(1)" | "TAKE(N-2)" | "TAKE(N-1)" /*
@@ -121,23 +163,15 @@ process of running that particular migration
 class.
 
 For each such record, you could review
-its ID, description, the cause of the
-error, and even the effect it resulted
-in. The effect could be what migrations
-needed to stop, or whether the program
-needed to stop entirely due to this error,
-or it was just ignored - according to error
-resolution policies you wrote in code
-(`@ErrorResolution`).
+its ID, description and the cause of the
+error, along with other data and
+metadata.
 
 Then, you specify an action for
 the `MigrationService` to take next time
 upon this particular record: set `action`
-to either `IGNORE` or `RETRY`. If the
-relevant error resolution strategy is
-`REPORT_AND_PROCEED`, the action defaults
-to `IGNORE`. Otherwise, it defaults to
-`RETRY`.
+to either `IGNORE` or `RETRY`. The default
+action is `RETRY`.
 
 If you set the action to `IGNORE`, the
 record will still be ignored next time, i.e.,

@@ -22,8 +22,6 @@ public abstract class DataStore<T extends MigratableEntity, FILTER_TYPE, FILTER_
 
     protected abstract void doSaveMultiple(List<T> records) throws BaseMigrationException, RuntimeException;
 
-    protected abstract T getDuplicateRecord(T record) throws BaseMigrationException, RuntimeException;
-
 
 
     // public final DataPage<T, FILTER_TYPE, FILTER_VALUE> getFirstPageOfRecords(int pageSize)

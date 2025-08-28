@@ -1,6 +1,5 @@
 package com.example.mjg.algorithms.retrying;
 
-import com.example.mjg.exceptions.BaseMigrationException;
 import com.example.mjg.exceptions.RetriesExhaustedException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

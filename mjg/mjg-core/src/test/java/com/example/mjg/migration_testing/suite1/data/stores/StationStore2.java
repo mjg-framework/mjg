@@ -4,6 +4,8 @@ import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.filtering.FilterStationsBy2;
 import com.example.mjg.migration_testing.suite1.data.stores.common.IntegerIDAbstractStore;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public class StationStore2 extends IntegerIDAbstractStore<StationEntity, FilterStationsBy2, Object> {
@@ -11,6 +13,12 @@ public class StationStore2 extends IntegerIDAbstractStore<StationEntity, FilterS
     protected Stream<StationEntity> applyFilter(Stream<StationEntity> recordStream, FilterStationsBy2 filterType, Object filterValue) {
         if (filterType == FilterStationsBy2.ID) {
             return recordStream.filter(record -> record.getId().equals(filterValue));
+        }
+
+        if (filterValue == FilterStationsBy2.ID_IN) {
+            @SuppressWarnings("unchecked")
+            Set<Integer> idIn = (Set<Integer>) filterValue;
+            return recordStream.filter(record -> idIn.contains(record.getId()));
         }
 
         if (filterType == FilterStationsBy2.STATION_CODE) {
@@ -34,5 +42,13 @@ public class StationStore2 extends IntegerIDAbstractStore<StationEntity, FilterS
     protected void assignRecordExceptId(StationEntity dest, StationEntity src) {
         dest.setStationCode(src.getStationCode());
         dest.setStationName(src.getStationName());
+    }
+
+    @Override
+    protected Map<FilterStationsBy2, Object> doMatchByIdIn(Set<Object> ids) {
+        return Map.of(
+            FilterStationsBy2.ID_IN,
+            ids
+        );
     }
 }

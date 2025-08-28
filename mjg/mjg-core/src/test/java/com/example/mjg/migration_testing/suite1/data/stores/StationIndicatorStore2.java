@@ -4,6 +4,8 @@ import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEn
 import com.example.mjg.migration_testing.suite1.data.filtering.FilterStationIndicatorsBy2;
 import com.example.mjg.migration_testing.suite1.data.stores.common.StringIDAbstractStore;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public class StationIndicatorStore2 extends StringIDAbstractStore<StationIndicatorEntity2, FilterStationIndicatorsBy2, Object> {
@@ -11,6 +13,12 @@ public class StationIndicatorStore2 extends StringIDAbstractStore<StationIndicat
     protected Stream<StationIndicatorEntity2> applyFilter(Stream<StationIndicatorEntity2> recordStream, FilterStationIndicatorsBy2 filterType, Object filterValue) {
         if (filterType == FilterStationIndicatorsBy2.ID) {
             return recordStream.filter(record -> record.getId().equals(filterValue));
+        }
+
+        if (filterType == FilterStationIndicatorsBy2.ID_IN) {
+            @SuppressWarnings("unchecked")
+            Set<String> idIn = (Set<String>) filterValue;
+            return recordStream.filter(record -> idIn.contains(record.getId()));
         }
 
         if (filterType == FilterStationIndicatorsBy2.STATION_CODE) {
@@ -41,5 +49,13 @@ public class StationIndicatorStore2 extends StringIDAbstractStore<StationIndicat
         dest.setIndicatorCode(src.getIndicatorCode());
         dest.setIndicatorId(src.getIndicatorId());
         dest.setAverageValue(src.getAverageValue());
+    }
+
+    @Override
+    protected Map<FilterStationIndicatorsBy2, Object> doMatchByIdIn(Set<Object> ids) {
+        return Map.of(
+            FilterStationIndicatorsBy2.ID_IN,
+            ids
+        );
     }
 }

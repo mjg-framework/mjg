@@ -1,22 +1,32 @@
 package com.example.mjg.migration_testing.suite1;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.List;
+import java.util.Set;
+import java.util.function.BiConsumer;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
 import com.example.mjg.migration_testing.suite1.data.entities.IndicatorEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.MeasurementResultEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity;
 import com.example.mjg.migration_testing.suite1.data.mocking.common.MockDataLoader;
-import com.example.mjg.migration_testing.suite1.data.stores.*;
+import com.example.mjg.migration_testing.suite1.data.stores.IndicatorStore;
+import com.example.mjg.migration_testing.suite1.data.stores.MeasurementResultStore;
+import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore;
+import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore2;
+import com.example.mjg.migration_testing.suite1.data.stores.StationStore;
+import com.example.mjg.migration_testing.suite1.data.stores.StationStore2;
 import com.example.mjg.services.migration.MigrationService;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
+import com.example.mjg.utils.ObjectMapperFactory;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-public class TestMigrations1 {
+public class TestMigrations2 {
     private static final List<IndicatorEntity> INITIAL_INDICATORS = List.of(
         new IndicatorEntity(1, "INDICATOR_1", "pH"),
         new IndicatorEntity(2, "INDICATOR_2", "TSS"),
@@ -60,6 +70,7 @@ public class TestMigrations1 {
         new StationIndicatorEntity("STATION_3,INDICATOR_5", "STATION_3", 3, "INDICATOR_5", 5)
     );
 
+    
     @BeforeAll
     static void setup() {
         MockDataLoader.load(
@@ -80,35 +91,73 @@ public class TestMigrations1 {
         MockDataLoader.reset(StationIndicatorStore.class);
         MockDataLoader.reset(StationIndicatorStore2.class);
         MockDataLoader.reset(StationStore2.class);
+        
+        BiConsumer<MigrationProgress, String> saveMigrationProgressToFile = (
+            migrationProgress, filePath
+        ) -> {
+            BufferedWriter writer = null;
+            try {
+                FileWriter fileWriter = new FileWriter(filePath, false);
+                writer = new BufferedWriter(fileWriter);
+
+                ObjectMapper objectMapper = ObjectMapperFactory.get();
+                String jsonString = objectMapper.writeValueAsString(migrationProgress);
+                writer.write(jsonString);
+
+                System.out.println("JSON string successfully saved to: " + filePath);
+            } catch (IOException e) {
+                System.err.println("Error saving JSON string to file: " + e.getMessage());
+                e.printStackTrace();
+            } finally {
+                if (writer != null) {
+                    try {
+                        writer.close();
+                    } catch (IOException e) {
+                        System.err.println("Error closing BufferedWriter: " + e.getMessage());
+                    }
+                }
+            }
+        };
+
+        // First run
+        MigrationService.getInst().addProgressPersistenceCallback(
+            migrationProgress -> {
+                saveMigrationProgressToFile.accept(
+                    migrationProgress,
+                    "migration-progress-test-2-run-1.json"
+                );
+            }
+        );
+        MigrationService.getInst().run(new MigrationProgress());
+
+        // Rerun to see how it skips migrated records from previous run
+        MigrationService.getInst().removeAllProgressPersistenceCallbacks();
+        MigrationService.getInst().addProgressPersistenceCallback(
+            migrationProgress -> {
+                saveMigrationProgressToFile.accept(
+                    migrationProgress,
+                    "migration-progress-test-2-run-2.json"
+                );
+            }
+        );
+
+        MigrationService.getInst().runWithPreviousProgress();
+
+        // Rerun to see how it handles duplicates
+        MigrationService.getInst().removeAllProgressPersistenceCallbacks();
+        MigrationService.getInst().addProgressPersistenceCallback(
+            migrationProgress -> {
+                saveMigrationProgressToFile.accept(
+                    migrationProgress,
+                    "migration-progress-test-2-run-3.json"
+                );
+            }
+        );
 
         MigrationService.getInst().runWithoutPreviousProgress();
     }
 
     @Test
-    public void testSourceDataStoresAreIntactAfterMigration() {
-        assertEquals(
-            INITIAL_INDICATORS,
-            MockDataLoader.getStore(IndicatorStore.class).getRecords()
-        );
-
-        assertEquals(
-            INITIAL_STATIONS,
-            MockDataLoader.getStore(StationStore.class).getRecords()
-        );
-
-        assertEquals(
-            INITIAL_MEASUREMENT_RESULTS,
-            MockDataLoader.getStore(MeasurementResultStore.class).getRecords()
-        );
-    }
-
-    @Test
-    public void testDataMigrated_M1() {
-        final var actualFinalM1StationIndicators = new HashSet<>(MockDataLoader.getStore(StationIndicatorStore.class).getRecords());
-        assertEquals(
-            FINAL_M1_STATION_INDICATORS,
-            actualFinalM1StationIndicators
-        );
+    public void test() {
     }
 }
-// TODO: Duplicate resolution, fault tolerance (in another test)

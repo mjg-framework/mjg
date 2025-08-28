@@ -1,6 +1,9 @@
 package com.example.mjg.algorithms.cardinality_check;
 
+import java.util.List;
+
 import com.example.mjg.config.Cardinality;
+import com.example.mjg.data.MigratableEntity;
 import com.example.mjg.exceptions.CardinalityViolationException;
 
 public class CardinalityCheck {
@@ -40,7 +43,7 @@ public class CardinalityCheck {
     public static void checkConformant(String migrationFQCN, String annotation, Cardinality cardinality, long numRecords)
     throws CardinalityViolationException {
         if (!isConformant(cardinality, numRecords)) {
-            throw new CardinalityViolationException(
+            throw CardinalityViolationException.of(
                 migrationFQCN,
                 annotation,
                 cardinality,
@@ -49,14 +52,18 @@ public class CardinalityCheck {
         }
     }
 
-    public static void checkConformantInProgress(String migrationFQCN, String annotation, Cardinality cardinality, long numRecords)
+    public static void checkConformantInProgress(
+        String migrationFQCN, String annotation, Cardinality cardinality,
+        long totalNumberOfRecords, List<MigratableEntity> recentRecords
+    )
     throws CardinalityViolationException {
-        if (!isConformantInProgress(cardinality, numRecords)) {
-            throw new CardinalityViolationException(
-                    migrationFQCN,
-                    annotation,
-                    cardinality,
-                    numRecords
+        if (!isConformantInProgress(cardinality, totalNumberOfRecords)) {
+            throw CardinalityViolationException.of(
+                migrationFQCN,
+                annotation,
+                cardinality,
+                totalNumberOfRecords,
+                recentRecords
             );
         }
     }

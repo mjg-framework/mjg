@@ -12,6 +12,7 @@ import com.example.mjg.migration_testing.suite1.data.filtering.FilterIndicatorsB
 import com.example.mjg.migration_testing.suite1.data.stores.IndicatorStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore;
+import com.example.mjg.storage.DataStoreRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,5 +66,15 @@ public class M1_PopulatePivotTable_StationIndicators {
                         indicator.getId()
                 ))
                 .toList();
+    }
+
+    public List<StationIndicatorEntity> handleDuplicate(
+        StationEntity inputRecord,
+        List<StationIndicatorEntity> outputRecords,
+        StationStore stationStore,
+        StationIndicatorStore stationIndicatorStore,
+        DataStoreRegistry dataStoreRegistry
+    ) {
+        return null;
     }
 }

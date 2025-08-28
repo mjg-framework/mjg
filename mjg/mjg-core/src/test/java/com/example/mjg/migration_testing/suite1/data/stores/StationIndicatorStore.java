@@ -4,6 +4,8 @@ import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEn
 import com.example.mjg.migration_testing.suite1.data.filtering.FilterStationIndicatorsBy;
 import com.example.mjg.migration_testing.suite1.data.stores.common.StringIDAbstractStore;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public class StationIndicatorStore extends StringIDAbstractStore<StationIndicatorEntity, FilterStationIndicatorsBy, Object> {
@@ -11,6 +13,12 @@ public class StationIndicatorStore extends StringIDAbstractStore<StationIndicato
     protected Stream<StationIndicatorEntity> applyFilter(Stream<StationIndicatorEntity> recordStream, FilterStationIndicatorsBy filterType, Object filterValue) {
         if (filterType == FilterStationIndicatorsBy.ID) {
             return recordStream.filter(record -> record.getId().equals(filterValue));
+        }
+
+        if (filterType == FilterStationIndicatorsBy.ID_IN) {
+            @SuppressWarnings("unchecked")
+            Set<String> idIn = (Set<String>) filterValue;
+            return recordStream.filter(record -> idIn.contains(record.getId()));
         }
 
         if (filterType == FilterStationIndicatorsBy.STATION_CODE) {
@@ -40,5 +48,13 @@ public class StationIndicatorStore extends StringIDAbstractStore<StationIndicato
         dest.setStationId(src.getStationId());
         dest.setIndicatorCode(src.getIndicatorCode());
         dest.setIndicatorId(src.getIndicatorId());
+    }
+
+    @Override
+    protected Map<FilterStationIndicatorsBy, Object> doMatchByIdIn(Set<Object> ids) {
+        return Map.of(
+            FilterStationIndicatorsBy.ID_IN,
+            ids
+        );
     }
 }
