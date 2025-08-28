@@ -5,18 +5,18 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class ConcurrentContainer<T> {
-    private T container;
+    private T value;
     private final ReentrantReadWriteLock rwLock;
 
     public ConcurrentContainer(T defaultValue) {
-        this.container = defaultValue;
+        this.value = defaultValue;
         this.rwLock = new ReentrantReadWriteLock();
     }
 
     public void read(Consumer<T> callback) {
         rwLock.readLock().lock();
         try {
-            callback.accept(container);
+            callback.accept(value);
         } finally {
             rwLock.readLock().unlock();
         }
@@ -25,7 +25,7 @@ public class ConcurrentContainer<T> {
     public void update(Function<T, T> callback) {
         rwLock.writeLock().lock();
         try {
-            this.container = callback.apply(this.container);
+            this.value = callback.apply(this.value);
         } finally {
             rwLock.writeLock().unlock();
         }

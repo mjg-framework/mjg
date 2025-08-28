@@ -134,9 +134,9 @@ public class MigrationRunner {
         );
         while (inputPage.getSize() > 0) {
             // Filter out those that are already migrated
-            List<MigratableEntity> records = inputPage.getRecords();
+            List<MigratableEntity> originalRecords = inputPage.getRecords();
 
-            Set<Object> inputRecordIds = records
+            Set<Object> inputRecordIds = originalRecords
                 .stream()
                 .map(MigratableEntity::getMigratableId)
                 .collect(Collectors.toCollection(HashSet::new));
@@ -146,11 +146,12 @@ public class MigrationRunner {
                 inputRecordIds
             );
 
-            List<MigratableEntity> records = inputPage.getRecords()
+            List<MigratableEntity> recordsToMigrate = originalRecords
                 .stream()
-                .filter()
+                .filter(record -> inputRecordIds.contains(record.getMigratableId()))
+                .toList();
             // Process
-            migrateRecords(inputPage.getRecords());
+            migrateRecords(recordsToMigrate);
             // Next page
             inputPage = inputStore.getNextPageOfRecordsAfter(inputPage);
         }
