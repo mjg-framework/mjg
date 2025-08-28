@@ -32,7 +32,7 @@ public class RetryLogicExecutor<T, R> {
                 return callback.apply(arg);
             } catch (Exception e) {
                 exception = e;
-                log.error(debugContext, e);
+                log.error(debugContext + ": " + e.getMessage());
                 --retriesLeft;
                 if (retriesLeft < 0) {
                     log.debug("NO MORE RETRIES LEFT, PROPAGATING ERROR");

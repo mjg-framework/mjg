@@ -53,7 +53,7 @@ public abstract class SimpleAbstractStore<T extends MigratableEntity, ID, FILTER
     throws BaseMigrationException {
         for (T existingRecord : records) {
             if (getRecordId(existingRecord).equals(getRecordId(record))) {
-                throw new DuplicateDataException("A record with the same ID already exist");
+                throw new DuplicateDataException("A record with the same ID already exists: " + record.getMigratableDescription());
                 // assignRecordExceptId(existingRecord, record);
                 // return;
             }

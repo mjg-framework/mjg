@@ -1,5 +1,6 @@
 package com.example.mjg.annotations;
 
+import com.example.mjg.config.ErrorResolution;
 import com.example.mjg.data.DataStore;
 
 import java.lang.annotation.*;
@@ -11,7 +12,5 @@ public @interface ForEachRecordFrom {
 
     int batchSize() default 512;
 
-    int retries() default 1;
-
-    int retryDelayInSeconds() default 3;
+    ErrorResolution inCaseOfError() default @ErrorResolution;
 }

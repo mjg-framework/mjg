@@ -9,50 +9,97 @@ import com.example.mjg.data.MigratableEntity;
 import com.example.mjg.exceptions.RetriesExhaustedException;
 import com.example.mjg.services.migration.internal.RecordProcessingContext;
 import com.example.mjg.services.migration.internal.fault_tolerance.FailedRecordGroup;
-import com.example.mjg.services.migration.internal.fault_tolerance.MigrationProgressManager;
 import com.example.mjg.services.migration.internal.reflective.RMatchWith;
 import com.example.mjg.services.migration.internal.reflective.RMigrationUtils;
 import com.example.mjg.storage.DataStoreRegistry;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 @Getter
 @AllArgsConstructor
+@Slf4j
 public class MatchAndReduceRunner {
     private final MigrationRunner migrationRunner;
 
     public List<RecordProcessingContext>
-    run(List<MigratableEntity> inputRecords)
+    run(AtomicBoolean anyFailed, List<MigratableEntity> inputRecords)
     throws RetriesExhaustedException {
-        List<RecordProcessingContext> inputContexts = inputRecords
-            .stream()
-            .map(RecordProcessingContext::new)
-            .toList();
+        List<RecordProcessingContext> inputContexts = startReduction(anyFailed, inputRecords);
 
         List<RMatchWith> rMatchWiths = migrationRunner.getRMatchWiths();
         // TODO: Probably should not use parallelStream() here,
         // TODO: since several matching in parallel could eat
         // TODO: up too much memory.
         for (RMatchWith rMatchWith : rMatchWiths) {
-            matchAndReduceRecordsPerMatching(rMatchWith, inputContexts, inputRecords);
+            matchAndReduceRecordsPerMatching(anyFailed, rMatchWith, inputContexts, inputRecords);
         }
+
+        return inputContexts;
+    }
+
+    private List<RecordProcessingContext> startReduction(
+        AtomicBoolean anyFailed,
+        List<MigratableEntity> inputRecords
+    ) {
+        RetryLogic retryLogic = RetryLogic
+            .maxRetries(migrationRunner.getRForEachRecordFrom().getForEachRecordFrom().inCaseOfError().retryTimes())
+            .retryDelayInSeconds(migrationRunner.getRForEachRecordFrom().getForEachRecordFrom().inCaseOfError().retryDelayInSeconds())
+            .exceptionReporter((exception, arg) -> {
+                anyFailed.set(true);
+                migrationRunner.getMigrationErrorInvestigator()
+                    .reportFailedRecords(
+                        new FailedRecordGroup(
+                            inputRecords,
+                            migrationRunner,
+                            migrationRunner.getRForEachRecordFrom().getForEachRecordFrom().inCaseOfError(),
+                            exception
+                        )
+                    );
+            })
+            .debugContext("While starting reduction");
+
+        var callStartReduction = retryLogic
+            .withCallback(arg -> {
+                RecordProcessingContext ctx = (RecordProcessingContext) arg;
+                migrationRunner.getRMigrationUtils()
+                    .callStartReductionMethod(ctx.getAggregates());
+
+                return null;
+            });
+
+        List<RecordProcessingContext> inputContexts = inputRecords
+            .stream()
+            .map(record -> {
+                RecordProcessingContext ctx = new RecordProcessingContext(record);
+                try {
+                    callStartReduction.apply(ctx);
+                } catch (RetriesExhaustedException e) {
+                    return null;
+                }
+                return ctx;
+            })
+            .filter(Objects::nonNull)
+            .toList();
 
         return inputContexts;
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     private void matchAndReduceRecordsPerMatching(
+        AtomicBoolean anyFailed,
         RMatchWith rMatchWith,
         List<RecordProcessingContext> recordContexts,
         List<MigratableEntity> inputRecords
     ) throws RetriesExhaustedException {
         DataStoreRegistry storeRegistry = migrationRunner.getStoreRegistry();
-        MigrationProgressManager migrationProgressManager = migrationRunner.getMigrationProgressManager();
         RMigrationUtils rMigrationUtils = migrationRunner.getRMigrationUtils();
         String migrationFQCN = migrationRunner.getMigrationFQCN();
 
@@ -63,16 +110,25 @@ public class MatchAndReduceRunner {
         final Cardinality cardinality = rMatchWith.getMatchWith().cardinality();
 
         var retryLogic = RetryLogic
-            .maxRetries(rMatchWith.getMatchWith().retries())
-            .retryDelayInSeconds(rMatchWith.getMatchWith().retryDelayInSeconds())
-            .exceptionReporter((exception, argIgnored) -> {
+            .maxRetries(rMatchWith.getMatchWith().inCaseOfError().retryTimes())
+            .retryDelayInSeconds(rMatchWith.getMatchWith().inCaseOfError().retryDelayInSeconds())
+            .exceptionReporter((exception, arg) -> {
+                anyFailed.set(true);
+
+                List<MigratableEntity> problematicRecords;
+                if (arg instanceof MigratableEntity record) {
+                    problematicRecords = List.of(record);
+                } else {
+                    problematicRecords = inputRecords;
+                }
                 FailedRecordGroup failedRecordGroup = new FailedRecordGroup(
-                    inputRecords,
+                    problematicRecords,
                     migrationRunner,
                     rMatchWith.getMatchWith().inCaseOfError(),
                     exception
                 );
-                migrationProgressManager.reportFailedRecords(failedRecordGroup);
+                migrationRunner.getMigrationErrorInvestigator()
+                    .reportFailedRecords(failedRecordGroup);
             })
             .debugContext(
                 "While matching with store: " + rMatchWith.getDataStoreReflection().getStoreClass().getCanonicalName()
@@ -83,12 +139,27 @@ public class MatchAndReduceRunner {
 
         var getNextPageOfRecordsAfter = retryLogic
             .withCallback(((DataStore<MigratableEntity, Object, Object>) store)::getNextPageOfRecordsAfter);
+        
+        var callMatchingMethod = retryLogic
+            .withCallback((MigratableEntity record) -> {
+                return rMigrationUtils.callMatchingMethod(rMatchWith, record);
+            });
 
         // Group records by matching filter sets
-        Map<Map<Object, Object>, List<RecordProcessingContext>> recordContextsByFiltersMap = recordContexts.stream()
-            .collect(
-                Collectors.groupingBy(recordContext -> rMigrationUtils.callMatchingMethod(rMatchWith, recordContext.getRecord()))
-            );
+        Map<Map<Object, Object>, List<RecordProcessingContext>> recordContextsByFiltersMap = new ConcurrentHashMap<>();
+        // TODO: Parallel stream here could improve speed.
+        recordContexts.forEach(recordContext -> {
+            try {
+                Map<Object, Object> filterSet = callMatchingMethod.apply(recordContext.getRecord());
+
+                List<RecordProcessingContext> contextsOfSameFilterSet = recordContextsByFiltersMap.computeIfAbsent(
+                    filterSet,
+                    k -> new ArrayList<>()
+                );
+
+                contextsOfSameFilterSet.add(recordContext);
+            } catch (RetriesExhaustedException ignored) {}
+        });
 
         // For each filter set, query the datastore, get matching records,
         // and reduce each input record on those matching records.
@@ -96,13 +167,12 @@ public class MatchAndReduceRunner {
             final Map<Object, Object> filters = entry.getKey();
             final List<RecordProcessingContext> inputRecordContexts = entry.getValue();
 
-            retryLogic.run(() -> {
-                try {
+            try {
+                retryLogic.run(() -> {
                     DataPage<? extends MigratableEntity, ?, ?> matchingPage = getFirstPageOfRecordsWithFilters
                         .apply(filters);
 
                     long numMatchingRecords = 0;
-                    final AtomicBoolean isReductionInitialized = new AtomicBoolean(false);
                     while (matchingPage.getSize() > 0) {
                         List<MigratableEntity> moreMatchingRecords = (List<MigratableEntity>) matchingPage.getRecords();
                         numMatchingRecords += moreMatchingRecords.size();
@@ -114,25 +184,16 @@ public class MatchAndReduceRunner {
 
                         // TODO: Parallel streaming here might improve speed,
                         // TODO: but ctx.getAggregates() is being mutated, so...
-                        inputRecordContexts.forEach(ctx -> {
-                            try {
-                                if (!isReductionInitialized.get()) {
-                                    rMigrationUtils.callStartReductionMethod(ctx.getAggregates());
-                                }
-                                rMigrationUtils.callReduceMethod(rMatchWith, ctx.getAggregates(), moreMatchingRecords);
-                            } catch (Exception e) {
-                                // report
-                            }
-                        });
+                        for (RecordProcessingContext ctx : inputRecordContexts) {
+                            rMigrationUtils.callReduceMethod(rMatchWith, ctx.getAggregates(), moreMatchingRecords);
+                        }
 
                         matchingPage = getNextPageOfRecordsAfter.apply((DataPage) matchingPage);
-
-                        isReductionInitialized.set(true);
                     }
 
                     CardinalityCheck.checkConformant(migrationFQCN, rMatchWith.getMatchWith().toString(), cardinality, numMatchingRecords);
-                } catch (RetriesExhaustedException ignored) {}
-            });
+                });
+            } catch (RetriesExhaustedException ignored) {}
         }
     }
 

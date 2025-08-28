@@ -67,15 +67,27 @@ public class MigrationService {
             ))
             .toList();
 
-        for (MigrationRunner runner : migrationRunners) {
-            log.info("Starting migration: " + runner.getMigrationFQCN());
-            try {
-                runner.run();
-            } catch (RetriesExhaustedException exception) {
-                log.info("Error while running migration: " + runner.getMigrationFQCN());
-                log.info("Stopping migration process altogether");
+        try {
+            for (MigrationRunner runner : migrationRunners) {
+                log.info("Starting migration: " + runner.getMigrationFQCN());
+                migrationProgressManager.startMigration(runner.getMigrationFQCN());
+
+                try {
+                    runner.run();
+                } catch (RetriesExhaustedException propagatedException) {
+                    log.info("Error while running migration: " + runner.getMigrationFQCN() + " (number of failures: "
+                        + runner.getMigrationErrorInvestigator().getNumFailures()
+                        + ") ; propagated exception = " + propagatedException
+                    );
+                    log.info("Stopping migration process altogether");
+                    break;
+                }
+
+                migrationProgressManager.finishMigration(runner.getMigrationFQCN());
+                log.info("Finished migration: " + runner.getMigrationFQCN());
             }
-            log.info("Finished migration: " + runner.getMigrationFQCN());
+        } finally {
+            migrationProgressManager.flush();
         }
     }
     

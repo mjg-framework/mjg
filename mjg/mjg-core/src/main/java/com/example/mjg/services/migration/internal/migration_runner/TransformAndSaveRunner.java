@@ -11,31 +11,28 @@ import com.example.mjg.services.migration.internal.fault_tolerance.FailedRecordG
 import com.example.mjg.services.migration.internal.reflective.RTransformAndSaveTo;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 @Getter
+@Slf4j
 class TransformAndSaveRunner {
     private final MigrationRunner migrationRunner;
 
-    private final AtomicInteger fails;
-
     public TransformAndSaveRunner(MigrationRunner migrationRunner) {
         this.migrationRunner = migrationRunner;
-        this.fails = new AtomicInteger(0);
     }
 
-    public void run(List<RecordProcessingContext> inputContexts)
-    throws RetriesExhaustedException {
-        Stream<RecordOutputContext> transformed = transform(inputContexts);
-        saveAndResolveDuplicatesIfAny(transformed);
-
-        if (fails.get() > 0) {
-            throw new RetriesExhaustedException("Number of failed transform-and-save operations:" + fails.get());
-        }
+    public void run(
+        AtomicBoolean anyFailed,
+        List<RecordProcessingContext> inputContexts
+    ) {
+        Stream<RecordOutputContext> transformed = transform(anyFailed, inputContexts);
+        saveAndResolveDuplicatesIfAny(anyFailed, transformed);
     }
 
     @Getter
@@ -45,24 +42,27 @@ class TransformAndSaveRunner {
         private List<MigratableEntity> outputRecords;
     }
 
-    private Stream<RecordOutputContext> transform(List<RecordProcessingContext> inputContexts) {
+    private Stream<RecordOutputContext> transform(
+        AtomicBoolean anyFailed,
+        List<RecordProcessingContext> inputContexts
+    ) {
         final RTransformAndSaveTo rTransformAndSaveTo = migrationRunner.getRTransformAndSaveTo();
 
         Cardinality transformCardinality = rTransformAndSaveTo.getTransformAndSaveTo().cardinality();
 
         RetryLogic retryLogic = RetryLogic
-            .maxRetries(rTransformAndSaveTo.getTransformAndSaveTo().retries())
-            .retryDelayInSeconds(rTransformAndSaveTo.getTransformAndSaveTo().retryDelayInSeconds())
+            .maxRetries(rTransformAndSaveTo.getTransformAndSaveTo().inCaseOfError().retryTimes())
+            .retryDelayInSeconds(rTransformAndSaveTo.getTransformAndSaveTo().inCaseOfError().retryDelayInSeconds())
             .exceptionReporter((exception, arg) -> {
+                anyFailed.set(true);
                 FailedRecordGroup failedRecordGroup = new FailedRecordGroup(
                     List.of(((RecordProcessingContext) arg).getRecord()),
                     migrationRunner,
                     rTransformAndSaveTo.getTransformAndSaveTo().inCaseOfError(),
                     exception
                 );
-                migrationRunner.getMigrationProgressManager()
+                migrationRunner.getMigrationErrorInvestigator()
                     .reportFailedRecords(failedRecordGroup);
-                fails.incrementAndGet();
             })
             .debugContext("While transforming records");
 
@@ -100,22 +100,25 @@ class TransformAndSaveRunner {
             .filter(Objects::nonNull);
     }
 
-    private void saveAndResolveDuplicatesIfAny(Stream<RecordOutputContext> outputContextsStream) {
+    private void saveAndResolveDuplicatesIfAny(
+        AtomicBoolean anyFailed,
+        Stream<RecordOutputContext> outputContextsStream
+    ) {
         final RTransformAndSaveTo rTransformAndSaveTo = migrationRunner.getRTransformAndSaveTo();
 
         RetryLogic retryLogic = RetryLogic
-            .maxRetries(rTransformAndSaveTo.getTransformAndSaveTo().retries())
-            .retryDelayInSeconds(rTransformAndSaveTo.getTransformAndSaveTo().retryDelayInSeconds())
+            .maxRetries(rTransformAndSaveTo.getTransformAndSaveTo().inCaseOfError().retryTimes())
+            .retryDelayInSeconds(rTransformAndSaveTo.getTransformAndSaveTo().inCaseOfError().retryDelayInSeconds())
             .exceptionReporter((exception, arg) -> {
+                anyFailed.set(true);
                 FailedRecordGroup failedRecordGroup = new FailedRecordGroup(
                     List.of(((RecordOutputContext) arg).getInputRecord()),
                     migrationRunner,
                     rTransformAndSaveTo.getTransformAndSaveTo().inCaseOfError(),
                     exception
                 );
-                migrationRunner.getMigrationProgressManager()
+                migrationRunner.getMigrationErrorInvestigator()
                     .reportFailedRecords(failedRecordGroup);
-                fails.incrementAndGet();
             })
             .debugContext("While saving records");
 

@@ -1,6 +1,7 @@
 package com.example.mjg.services.migration.internal.migration_runner;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import com.example.mjg.algorithms.retrying.RetryLogic;
@@ -13,6 +14,7 @@ import com.example.mjg.data.DataStore;
 import com.example.mjg.data.MigratableEntity;
 import com.example.mjg.exceptions.RetriesExhaustedException;
 import com.example.mjg.services.migration.internal.RecordProcessingContext;
+import com.example.mjg.services.migration.internal.fault_tolerance.MigrationErrorInvestigator;
 import com.example.mjg.services.migration.internal.fault_tolerance.MigrationProgressManager;
 import com.example.mjg.services.migration.internal.fault_tolerance.SuccessfulRecordGroup;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
@@ -49,7 +51,7 @@ public class MigrationRunner {
 
     private final RMigrationUtils rMigrationUtils;
 
-    private final MigrationProgressManager migrationProgressManager;
+    private final MigrationErrorInvestigator migrationErrorInvestigator;
 
     private final MatchAndReduceRunner matchAndReduceRunner;
     private final TransformAndSaveRunner transformAndSaveRunner;
@@ -62,7 +64,6 @@ public class MigrationRunner {
     ) {
         this.storeRegistry = storeRegistry;
         this.migrationRegistry = migrationRegistry;
-        this.migrationProgressManager = migrationProgressManager;
         this.migrationFQCN = migrationFQCN;
         this.migrationInstance = migrationRegistry.get(migrationFQCN);
         this.migrationClass = migrationInstance.getClass();
@@ -105,6 +106,10 @@ public class MigrationRunner {
 
         this.matchAndReduceRunner = new MatchAndReduceRunner(this);
         this.transformAndSaveRunner = new TransformAndSaveRunner(this);
+
+        this.migrationErrorInvestigator = new MigrationErrorInvestigator(migrationProgressManager, this);
+        this.migrationErrorInvestigator.startInBackground();
+        this.migrationErrorInvestigator.retryPreviouslyFailedRecords();
     }
 
     private final DataStore<MigratableEntity, Object, Object> inputStore;
@@ -112,7 +117,7 @@ public class MigrationRunner {
 
 
     public void restoreProgress(MigrationProgress migrationProgress) {
-        this.migrationProgressManager.restorePreviousProgress(migrationProgress);
+        this.migrationErrorInvestigator.restorePreviousProgress(migrationProgress);
     }
 
     public void run()
@@ -135,64 +140,85 @@ public class MigrationRunner {
         DataStore<MigratableEntity, Object, Object> inputStore,
         Map<Object, Object> filters
     ) throws RetriesExhaustedException {
-        final int INPUT_BATCH_SIZE = rForEachRecordFrom.getForEachRecordFrom().batchSize();
+        try {
+            final int INPUT_BATCH_SIZE = rForEachRecordFrom.getForEachRecordFrom().batchSize();
 
-        RetryLogic retryLogic = RetryLogic
-            .maxRetries(rForEachRecordFrom.getForEachRecordFrom().retries())
-            .retryDelayInSeconds(rForEachRecordFrom.getForEachRecordFrom().retryDelayInSeconds())
-            .exceptionReporter(
-                (e, arg) -> migrationProgressManager.reportFatalError(e)
-            )
-            .debugContext(
-                "While reading records from store: " + rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
-                + "\nwith filters: " + filters
+            RetryLogic retryLogic = RetryLogic
+                .maxRetries(rForEachRecordFrom.getForEachRecordFrom().inCaseOfError().retryTimes())
+                .retryDelayInSeconds(rForEachRecordFrom.getForEachRecordFrom().inCaseOfError().retryDelayInSeconds())
+                .exceptionReporter(
+                    (e, arg) -> migrationErrorInvestigator.reportFatalError(e)
+                )
+                .debugContext(
+                    "While reading records from store: " + rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
+                    + "\nwith filters: " + filters
+                );
+
+            var getFirstPageOfRecordsWithFilter = retryLogic.withCallback(
+                (Object ignoredArg) -> inputStore.getFirstPageOfRecordsWithFilter(
+                    filters,
+                    INPUT_BATCH_SIZE
+                )
+            );
+            var getNextPageOfRecordsAfter = retryLogic.withCallback(
+                inputStore::getNextPageOfRecordsAfter
             );
 
-        var getFirstPageOfRecordsWithFilter = retryLogic.withCallback(
-            (Object ignoredArg) -> inputStore.getFirstPageOfRecordsWithFilter(
-                filters,
-                INPUT_BATCH_SIZE
-            )
-        );
-        var getNextPageOfRecordsAfter = retryLogic.withCallback(
-            inputStore::getNextPageOfRecordsAfter
-        );
+            DataPage<MigratableEntity, Object, Object> inputPage = getFirstPageOfRecordsWithFilter
+                .apply(null);
 
-        DataPage<MigratableEntity, Object, Object> inputPage = getFirstPageOfRecordsWithFilter
-            .apply(null);
+            while (inputPage.getSize() > 0) {
+                // Filter out those that are already migrated
+                List<MigratableEntity> originalRecords = inputPage.getRecords();
 
-        while (inputPage.getSize() > 0) {
-            // Filter out those that are already migrated
-            List<MigratableEntity> originalRecords = inputPage.getRecords();
+                Set<Object> inputRecordIds = originalRecords
+                    .stream()
+                    .map(MigratableEntity::getMigratableId)
+                    .collect(Collectors.toCollection(HashSet::new));
 
-            Set<Object> inputRecordIds = originalRecords
-                .stream()
-                .map(MigratableEntity::getMigratableId)
-                .collect(Collectors.toCollection(HashSet::new));
+                migrationErrorInvestigator.excludeSuccessfullyMigratedRecordIds(
+                    this.migrationFQCN,
+                    inputRecordIds
+                );
 
-            migrationProgressManager.excludeSuccessfullyMigratedRecordIds(
-                this.migrationFQCN,
-                inputRecordIds
-            );
-
-            List<MigratableEntity> recordsToMigrate = originalRecords
-                .stream()
-                .filter(record -> inputRecordIds.contains(record.getMigratableId()))
-                .toList();
-            // Process
-            migrateRecords(recordsToMigrate);
-            // Next page
-            inputPage = getNextPageOfRecordsAfter.apply(inputPage);
+                List<MigratableEntity> recordsToMigrate = originalRecords
+                    .stream()
+                    .filter(record -> inputRecordIds.contains(record.getMigratableId()))
+                    .toList();
+                // Process
+                migrateRecords(recordsToMigrate);
+                // Next page
+                inputPage = getNextPageOfRecordsAfter.apply(inputPage);
+            }
+        } catch (RetriesExhaustedException ignored) {
+        } finally {
+            // Wait for all retry jobs to complete
+            migrationErrorInvestigator.join();
+            final int numFailures = migrationErrorInvestigator.getNumFailures();
+            if (numFailures > 0) {
+                throw new RetriesExhaustedException(migrationFQCN + " experienced at least " + numFailures);
+            }
         }
     }
 
     private void migrateRecords(List<MigratableEntity> inputRecords)
     throws RetriesExhaustedException {
-        List<RecordProcessingContext> inputContexts = matchAndReduceRunner.run(inputRecords);
-        transformAndSaveRunner.run(inputContexts);
-        migrationProgressManager.reportSuccessfulRecords(
-            new SuccessfulRecordGroup(inputRecords, this)
-        );
+        boolean anyFailed = false;
+        AtomicBoolean anyFailedMidOperation = new AtomicBoolean(false);
+
+        List<RecordProcessingContext> inputContexts = matchAndReduceRunner.run(anyFailedMidOperation, inputRecords);
+        anyFailed |= anyFailedMidOperation.get();
+        anyFailedMidOperation.set(false);
+        
+        transformAndSaveRunner.run(anyFailedMidOperation, inputContexts);
+        anyFailed |= anyFailedMidOperation.get();
+        anyFailedMidOperation.set(false);
+
+        if (!anyFailed) {
+            migrationErrorInvestigator.reportSuccessfulRecords(
+                new SuccessfulRecordGroup(inputRecords, this)
+            );
+        }
     }
 
     private static List<MatchWith> buildMatchingPlan(MatchWith[] matchWiths) {

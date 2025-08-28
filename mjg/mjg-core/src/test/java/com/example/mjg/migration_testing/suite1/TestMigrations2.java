@@ -1,5 +1,7 @@
 package com.example.mjg.migration_testing.suite1;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -50,25 +52,25 @@ public class TestMigrations2 {
         new MeasurementResultEntity(4, "STATION_2,INDICATOR_4", 12.03)
     );
 
-    private static final Set<StationIndicatorEntity> FINAL_M1_STATION_INDICATORS = Set.of(
-        new StationIndicatorEntity("STATION_1,INDICATOR_1", "STATION_1", 1, "INDICATOR_1", 1),
-        new StationIndicatorEntity("STATION_1,INDICATOR_2", "STATION_1", 1, "INDICATOR_2", 2),
-        new StationIndicatorEntity("STATION_1,INDICATOR_3", "STATION_1", 1, "INDICATOR_3", 3),
-        new StationIndicatorEntity("STATION_1,INDICATOR_4", "STATION_1", 1, "INDICATOR_4", 4),
-        new StationIndicatorEntity("STATION_1,INDICATOR_5", "STATION_1", 1, "INDICATOR_5", 5),
+    // private static final Set<StationIndicatorEntity> FINAL_M1_STATION_INDICATORS = Set.of(
+    //     new StationIndicatorEntity("STATION_1,INDICATOR_1", "STATION_1", 1, "INDICATOR_1", 1),
+    //     new StationIndicatorEntity("STATION_1,INDICATOR_2", "STATION_1", 1, "INDICATOR_2", 2),
+    //     new StationIndicatorEntity("STATION_1,INDICATOR_3", "STATION_1", 1, "INDICATOR_3", 3),
+    //     new StationIndicatorEntity("STATION_1,INDICATOR_4", "STATION_1", 1, "INDICATOR_4", 4),
+    //     new StationIndicatorEntity("STATION_1,INDICATOR_5", "STATION_1", 1, "INDICATOR_5", 5),
 
-        new StationIndicatorEntity("STATION_2,INDICATOR_1", "STATION_2", 2, "INDICATOR_1", 1),
-        new StationIndicatorEntity("STATION_2,INDICATOR_2", "STATION_2", 2, "INDICATOR_2", 2),
-        new StationIndicatorEntity("STATION_2,INDICATOR_3", "STATION_2", 2, "INDICATOR_3", 3),
-        new StationIndicatorEntity("STATION_2,INDICATOR_4", "STATION_2", 2, "INDICATOR_4", 4),
-        new StationIndicatorEntity("STATION_2,INDICATOR_5", "STATION_2", 2, "INDICATOR_5", 5),
+    //     new StationIndicatorEntity("STATION_2,INDICATOR_1", "STATION_2", 2, "INDICATOR_1", 1),
+    //     new StationIndicatorEntity("STATION_2,INDICATOR_2", "STATION_2", 2, "INDICATOR_2", 2),
+    //     new StationIndicatorEntity("STATION_2,INDICATOR_3", "STATION_2", 2, "INDICATOR_3", 3),
+    //     new StationIndicatorEntity("STATION_2,INDICATOR_4", "STATION_2", 2, "INDICATOR_4", 4),
+    //     new StationIndicatorEntity("STATION_2,INDICATOR_5", "STATION_2", 2, "INDICATOR_5", 5),
 
-        new StationIndicatorEntity("STATION_3,INDICATOR_1", "STATION_3", 3, "INDICATOR_1", 1),
-        new StationIndicatorEntity("STATION_3,INDICATOR_2", "STATION_3", 3, "INDICATOR_2", 2),
-        new StationIndicatorEntity("STATION_3,INDICATOR_3", "STATION_3", 3, "INDICATOR_3", 3),
-        new StationIndicatorEntity("STATION_3,INDICATOR_4", "STATION_3", 3, "INDICATOR_4", 4),
-        new StationIndicatorEntity("STATION_3,INDICATOR_5", "STATION_3", 3, "INDICATOR_5", 5)
-    );
+    //     new StationIndicatorEntity("STATION_3,INDICATOR_1", "STATION_3", 3, "INDICATOR_1", 1),
+    //     new StationIndicatorEntity("STATION_3,INDICATOR_2", "STATION_3", 3, "INDICATOR_2", 2),
+    //     new StationIndicatorEntity("STATION_3,INDICATOR_3", "STATION_3", 3, "INDICATOR_3", 3),
+    //     new StationIndicatorEntity("STATION_3,INDICATOR_4", "STATION_3", 3, "INDICATOR_4", 4),
+    //     new StationIndicatorEntity("STATION_3,INDICATOR_5", "STATION_3", 3, "INDICATOR_5", 5)
+    // );
 
     
     @BeforeAll
@@ -91,10 +93,14 @@ public class TestMigrations2 {
         MockDataLoader.reset(StationIndicatorStore.class);
         MockDataLoader.reset(StationIndicatorStore2.class);
         MockDataLoader.reset(StationStore2.class);
-        
+    }
+
+    @Test
+    void test() {
         BiConsumer<MigrationProgress, String> saveMigrationProgressToFile = (
             migrationProgress, filePath
         ) -> {
+            System.out.println("============= PERSISTING PROGRESS ================");
             BufferedWriter writer = null;
             try {
                 FileWriter fileWriter = new FileWriter(filePath, false);
@@ -129,6 +135,10 @@ public class TestMigrations2 {
             }
         );
         MigrationService.getInst().run(new MigrationProgress());
+        assertEquals(
+            INITIAL_STATIONS,
+            MockDataLoader.getStore(StationStore.class).getRecords()
+        );
 
         // Rerun to see how it skips migrated records from previous run
         MigrationService.getInst().removeAllProgressPersistenceCallbacks();
@@ -155,9 +165,5 @@ public class TestMigrations2 {
         );
 
         MigrationService.getInst().runWithoutPreviousProgress();
-    }
-
-    @Test
-    public void test() {
     }
 }

@@ -4,7 +4,8 @@ import lombok.*;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -14,5 +15,7 @@ import java.util.ArrayList;
 public class MigrationProgressMetadata implements Serializable {
     private LocalDateTime timestamp = LocalDateTime.now();
 
-    private ArrayList<MigrationClassMetadata> migrationClasses = new ArrayList<>();
+    private Set<String> completedMigrationFQCNs = new HashSet<>();
+
+    private Set<String> inProgressMigrationFQCNs = new HashSet<>();
 }

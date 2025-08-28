@@ -32,10 +32,10 @@ public class CardinalityViolationException extends BaseMigrationException {
         String msg = "Cardinality requirement violated in migration " + migrationFQCN + "\n"
             + "    annotation = " + annotation + "\n"
             + "    required cardinality = " + cardinality + "\n"
-            + "    but " + totalRecords + " records found. The most recent ones are:\n";
+            + "    but " + totalRecords + " records found. The most recent ones are:\n        ";
 
         try {
-            msg += String.join(", ", recentRecords.stream().map(MigratableEntity::getMigratableDescription).toList());
+            msg += String.join(",\n        ", recentRecords.stream().map(MigratableEntity::getMigratableDescription).toList());
         } catch (Exception e1) {
             try {
                 msg += String.join(", ", recentRecords.stream().map(record -> "<ID: " + record.getMigratableId() + ">").toList());
@@ -45,6 +45,7 @@ public class CardinalityViolationException extends BaseMigrationException {
                     + "\n\nEXCEPTION 2:" + ExceptionUtils.getStackTrace(e2);
             }
         }
+        msg += "\n";
 
         return new CardinalityViolationException(msg);
     }

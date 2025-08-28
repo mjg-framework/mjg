@@ -1,20 +1,36 @@
 package com.example.mjg.migration_testing.suite1;
 
+import com.example.mjg.data.MigratableEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.IndicatorEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.MeasurementResultEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity;
+import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity2;
 import com.example.mjg.migration_testing.suite1.data.mocking.common.MockDataLoader;
 import com.example.mjg.migration_testing.suite1.data.stores.*;
 import com.example.mjg.services.migration.MigrationService;
+import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
+import com.example.mjg.utils.ObjectMapperFactory;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TestMigrations1 {
     private static final List<IndicatorEntity> INITIAL_INDICATORS = List.of(
@@ -37,7 +53,10 @@ public class TestMigrations1 {
         new MeasurementResultEntity(3, "STATION_1,INDICATOR_3", 411),
         new MeasurementResultEntity(4, "STATION_1,INDICATOR_4", -52.25),
 
-        new MeasurementResultEntity(4, "STATION_2,INDICATOR_4", 12.03)
+        new MeasurementResultEntity(4, "STATION_2,INDICATOR_4", 12.03),
+        new MeasurementResultEntity(4, "STATION_2,INDICATOR_4", -40.01),
+        new MeasurementResultEntity(4, "STATION_2,INDICATOR_4", 50774),
+        new MeasurementResultEntity(4, "STATION_2,INDICATOR_4", 0)
     );
 
     private static final Set<StationIndicatorEntity> FINAL_M1_STATION_INDICATORS = Set.of(
@@ -61,7 +80,7 @@ public class TestMigrations1 {
     );
 
     @BeforeAll
-    static void setup() {
+    public static void setup() {
         MockDataLoader.load(
             IndicatorStore.class,
             INITIAL_INDICATORS
@@ -81,6 +100,43 @@ public class TestMigrations1 {
         MockDataLoader.reset(StationIndicatorStore2.class);
         MockDataLoader.reset(StationStore2.class);
 
+
+        BiConsumer<MigrationProgress, String> saveMigrationProgressToFile = (
+            migrationProgress, filePath
+        ) -> {
+            System.out.println("============= PERSISTING PROGRESS ================");
+            BufferedWriter writer = null;
+            try {
+                FileWriter fileWriter = new FileWriter(filePath, false);
+                writer = new BufferedWriter(fileWriter);
+
+                ObjectMapper objectMapper = ObjectMapperFactory.get();
+                String jsonString = objectMapper.writeValueAsString(migrationProgress);
+                writer.write(jsonString);
+
+                System.out.println("JSON string successfully saved to: " + filePath);
+            } catch (IOException e) {
+                System.err.println("Error saving JSON string to file: " + e.getMessage());
+                e.printStackTrace();
+            } finally {
+                if (writer != null) {
+                    try {
+                        writer.close();
+                    } catch (IOException e) {
+                        System.err.println("Error closing BufferedWriter: " + e.getMessage());
+                    }
+                }
+            }
+        };
+
+        MigrationService.getInst().addProgressPersistenceCallback(
+            migrationProgress -> {
+                saveMigrationProgressToFile.accept(
+                    migrationProgress,
+                    "migration-progress-test-1.json"
+                );
+            }
+        );
         MigrationService.getInst().runWithoutPreviousProgress();
     }
 
@@ -109,6 +165,57 @@ public class TestMigrations1 {
             FINAL_M1_STATION_INDICATORS,
             actualFinalM1StationIndicators
         );
+    }
+
+    @Test
+    public void testDataMigrated_M2() {
+        assertEquals(
+            INITIAL_STATIONS.size(),
+            MockDataLoader.getStore(StationStore2.class).getRecords().size()
+        );
+    }
+
+    @Test
+    public void testDataMigrated_M3() {
+        List<MigratableEntity> rawMigratedRecords = MockDataLoader.getStore(StationIndicatorStore2.class).getRecords();
+        List<StationIndicatorEntity2> migratedRecords = rawMigratedRecords
+            .stream()
+            .map(StationIndicatorEntity2.class::cast)
+            .toList();
+
+        assertEquals(FINAL_M1_STATION_INDICATORS.size(), migratedRecords.size());
+        
+        AtomicReference<String> twoRecordsWithSameIdExist = new AtomicReference<>(null);
+
+        Map<String, StationIndicatorEntity2> codeToRecordMap = migratedRecords
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    record -> record.getStationCode() + "," + record.getIndicatorCode(),
+                    Function.identity(),
+                    (existing, replacement) -> {
+                        twoRecordsWithSameIdExist.set(existing.getId());
+                        return existing;
+                    },
+                    HashMap::new
+                )
+            );
+        
+        assertTrue(twoRecordsWithSameIdExist.get() == null);
+
+        // System.out.println("MAP: " + codeToRecordMap);
+        
+        assertEquals(14, codeToRecordMap.get("new code STATION_1,INDICATOR_1").getAverageValue());
+        assertEquals(255, codeToRecordMap.get("new code STATION_1,INDICATOR_2").getAverageValue());
+        assertEquals(411, codeToRecordMap.get("new code STATION_1,INDICATOR_3").getAverageValue());
+        assertEquals(-52.25, codeToRecordMap.get("new code STATION_1,INDICATOR_4").getAverageValue());
+        assertEquals(12686.505, codeToRecordMap.get("new code STATION_2,INDICATOR_4").getAverageValue());
+
+        assertEquals("new code STATION_1", codeToRecordMap.get("new code STATION_1,INDICATOR_1").getStationCode());
+        assertEquals("new code STATION_1", codeToRecordMap.get("new code STATION_1,INDICATOR_2").getStationCode());
+        assertEquals("new code STATION_1", codeToRecordMap.get("new code STATION_1,INDICATOR_3").getStationCode());
+        assertEquals("new code STATION_1", codeToRecordMap.get("new code STATION_1,INDICATOR_4").getStationCode());
+        assertEquals("new code STATION_2", codeToRecordMap.get("new code STATION_2,INDICATOR_4").getStationCode());
     }
 }
 // TODO: Duplicate resolution, fault tolerance (in another test)

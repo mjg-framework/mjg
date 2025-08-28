@@ -11,61 +11,84 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 @Slf4j
 public class MigrationProgressManager {
-    ConcurrentContainer<
-        MigrationProgress
-    > migrationProgressContainer;
+    ConcurrentContainer<MigrationProgress> migrationProgressContainer;
 
-    ConcurrentContainer<
-        List<Consumer<MigrationProgress>>
-    > onProgressPersistenceCallbacksContainer;
+    ConcurrentContainer<List<Consumer<MigrationProgress>>> onProgressPersistenceCallbacksContainer;
 
     public MigrationProgressManager() {
         this.migrationProgressContainer = new ConcurrentContainer<>(new MigrationProgress());
         this.onProgressPersistenceCallbacksContainer = new ConcurrentContainer<>(
-            new ArrayList<>()
-        );
+                new ArrayList<>());
         Runtime.getRuntime().addShutdownHook(
             new Thread(() -> {
                 log.info("Stopping gracefully. Please do not kill this process!");
-
                 try {
                     // Wait for stuff to finalize
                     Thread.sleep(1000);
                 } catch (InterruptedException ignored) {}
 
-                migrationProgressContainer.read(migrationProgress -> {
-                    if (migrationProgress == null) {
-                        log.warn("Migration progress is null, ignoring persistence callbacks");
-                    }
-                    onProgressPersistenceCallbacksContainer.read(callbacks -> {
-                        if (callbacks.isEmpty()) {
-                            log.warn("No callback to save migration progress. You are at risk of losing progress.");
-                            // TODO: Write directly into file here - any will work.
-                        }
-                        callbacks.forEach(callback -> {
-                            try {
-                                callback.accept(migrationProgress);
-                            } catch (Exception e) {
-                                log.error(
-                                    "Error while running progress persistence callback, but will be ignored",
-                                    e
-                                );
-                            }
-                        });
-                    });
-                });
+                this.flush();
+
                 log.info("Gracefully stopped");
-            })
-        );
+            }));
+    }
+
+    public Set<Object> getCurrentlyFailedRecordIds(String migrationFQCN) {
+        Set<Object> ids = new HashSet<>();
+        migrationProgressContainer.read(migrationProgress -> {
+            MigrationProgressPerMigrationClass migrationProgressOfThisMigrationClass = migrationProgress
+                .getMigrationProgress().computeIfAbsent(
+                    migrationFQCN,
+                    k -> new MigrationProgressPerMigrationClass(migrationFQCN)
+                );
+            
+            List<Object> failedRecordIds = migrationProgressOfThisMigrationClass.getFailedRecords()
+                .stream()
+                .map(FailedRecord::getId)
+                .toList();
+            
+            ids.addAll(failedRecordIds);
+        });
+
+        return ids;
+    }
+
+    /**
+     * Finalizes the migration progress data
+     * and call persistence callbacks
+     */
+    public void flush() {
+        migrationProgressContainer.read(migrationProgress -> {
+            if (migrationProgress == null) {
+                log.warn("Migration progress is null, ignoring persistence callbacks");
+            }
+            onProgressPersistenceCallbacksContainer.read(callbacks -> {
+                if (callbacks.isEmpty()) {
+                    log.warn("No callback to save migration progress. You are at risk of losing progress.");
+                    // TODO: Write directly into a temp file here for backup in case of catastrophic failure
+                }
+                callbacks.forEach(callback -> {
+                    try {
+                        callback.accept(migrationProgress);
+                    } catch (Exception e) {
+                        log.error(
+                            "Error while running progress persistence callback, but will be ignored",
+                            e
+                        );
+                    }
+                });
+            });
+        });
     }
 
     public void addProgressPersistenceCallback(Consumer<MigrationProgress> onProgressPersistenceCallback) {
@@ -87,24 +110,35 @@ public class MigrationProgressManager {
     }
 
     public void reportSuccessfulRecords(
-        SuccessfulRecordGroup successfulRecordGroup
-    ) {
-        assertProgressInitialized();
-
+            SuccessfulRecordGroup successfulRecordGroup) {
         migrationProgressContainer.update(migrationProgress -> {
             MigrationProgressPerMigrationClass progressInThisMigrationClass = migrationProgress
-                .getMigrationProgress()
-                .computeIfAbsent(
-                    successfulRecordGroup.getMigrationRunner().getMigrationFQCN(),
-                    MigrationProgressPerMigrationClass::new
-                );
-            
-            progressInThisMigrationClass.getMigratedRecordIds().addAll(
-                successfulRecordGroup.getRecords().stream()
-                    .map(MigratableEntity::getMigratableId)
-                    .toList()
-            );
+                    .getMigrationProgress()
+                    .computeIfAbsent(
+                            successfulRecordGroup.getMigrationRunner().getMigrationFQCN(),
+                            MigrationProgressPerMigrationClass::new);
 
+            progressInThisMigrationClass.getMigratedRecordIds().addAll(
+                    successfulRecordGroup.getRecords().stream()
+                            .map(MigratableEntity::getMigratableId)
+                            .toList());
+
+            return migrationProgress;
+        });
+    }
+
+    public void startMigration(String migrationFQCN) {
+        migrationProgressContainer.update(migrationProgress -> {
+            migrationProgress.getMetadata().getCompletedMigrationFQCNs().remove(migrationFQCN);
+            migrationProgress.getMetadata().getInProgressMigrationFQCNs().add(migrationFQCN);
+            return migrationProgress;
+        });
+    }
+
+    public void finishMigration(String migrationFQCN) {
+        migrationProgressContainer.update(migrationProgress -> {
+            migrationProgress.getMetadata().getInProgressMigrationFQCNs().remove(migrationFQCN);
+            migrationProgress.getMetadata().getCompletedMigrationFQCNs().add(migrationFQCN);
             return migrationProgress;
         });
     }
@@ -112,31 +146,26 @@ public class MigrationProgressManager {
     public void reportFailedRecords(
         FailedRecordGroup failedRecordGroup
     ) {
-        assertProgressInitialized();
-
         String cause = ExceptionUtils.getRootCauseMessage(failedRecordGroup.getException());
 
         migrationProgressContainer.update(migrationProgress -> {
             MigrationProgressPerMigrationClass progressInThisMigrationClass = migrationProgress
-                .getMigrationProgress()
-                .computeIfAbsent(
-                    failedRecordGroup.getMigrationRunner().getMigrationFQCN(),
-                    MigrationProgressPerMigrationClass::new
-                );
-            
+                    .getMigrationProgress()
+                    .computeIfAbsent(
+                            failedRecordGroup.getMigrationRunner().getMigrationFQCN(),
+                            MigrationProgressPerMigrationClass::new);
+
             progressInThisMigrationClass.getFailedRecords().addAll(
-                failedRecordGroup.getRecords().stream()
-                    .map(failedRecord -> {
-                        return new FailedRecord(
-                            failedRecord.getMigratableId(),
-                            failedRecord.getMigratableDescription(),
-                            cause,
-                            new FailedRecordAction(FailedRecordAction.Type.RETRY),
-                            LocalDateTime.now()
-                        );
-                    })
-                    .toList()
-            );
+                    failedRecordGroup.getRecords().stream()
+                            .map(failedRecord -> {
+                                return new FailedRecord(
+                                        failedRecord.getMigratableId(),
+                                        failedRecord.getMigratableDescription(),
+                                        cause,
+                                        new FailedRecordAction(FailedRecordAction.Type.RETRY),
+                                        LocalDateTime.now());
+                            })
+                            .toList());
 
             return migrationProgress;
         });
@@ -145,20 +174,18 @@ public class MigrationProgressManager {
     }
 
     public void excludeSuccessfullyMigratedRecordIds(
-        String migrationFQCN,
-        Set<Object> recordIds
-    ) {
+            String migrationFQCN,
+            Set<Object> recordIds) {
         migrationProgressContainer.read(migrationProgress -> {
             MigrationProgressPerMigrationClass progressInThisMigrationClass = migrationProgress
-                .getMigrationProgress()
-                .computeIfAbsent(
-                    migrationFQCN,
-                    MigrationProgressPerMigrationClass::new
-                );
-            
+                    .getMigrationProgress()
+                    .computeIfAbsent(
+                            migrationFQCN,
+                            MigrationProgressPerMigrationClass::new);
+
             Set<Object> migratedRecordIds = progressInThisMigrationClass
-                .getMigratedRecordIds();
-            
+                    .getMigratedRecordIds();
+
             recordIds.removeAll(migratedRecordIds);
         });
     }
@@ -170,19 +197,5 @@ public class MigrationProgressManager {
             );
             return migrationProgress;
         });
-    }
-
-    private void assertProgressInitialized() {
-        AtomicBoolean isMigrationProgressInitialized = new AtomicBoolean(false);
-
-        migrationProgressContainer.read(migrationProgress -> {
-            if (migrationProgress != null) {
-                isMigrationProgressInitialized.set(true);
-            }
-        });
-
-        if (!isMigrationProgressInitialized.get()) {
-            throw new IllegalStateException("MigrationProgress was not initialized!");
-        }
     }
 }

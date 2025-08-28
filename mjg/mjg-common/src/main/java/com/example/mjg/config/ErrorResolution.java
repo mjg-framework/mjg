@@ -10,5 +10,5 @@ import java.lang.annotation.Target;
 public @interface ErrorResolution {
     int retryTimes() default 1;
 
-    int retryDelayInSeconds() default 3;
+    int retryDelayInSeconds() default 1;
 }

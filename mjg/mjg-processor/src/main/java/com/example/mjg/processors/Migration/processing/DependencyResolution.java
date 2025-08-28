@@ -35,7 +35,7 @@ public class DependencyResolution {
 
         for (TypeElement migrationClass : migrationClasses) {
             Map<String, Object> valuesAnnMigration = null;
-            Map<String, Object> valuesAnnForEachEntityFrom = null;
+            Map<String, Object> valuesAnnForEachRecordFrom = null;
             List<Map<String, Object>> valuesAnnsMatchWith = new ArrayList<>();
             Map<String, Object> valuesAnnTransformAndSaveTo = null;
             boolean thisMigrationIsInvalid = false;
@@ -58,12 +58,12 @@ public class DependencyResolution {
                     }
 
                 } else if (annotationQualifiedName.contentEquals(ForEachRecordFrom.class.getCanonicalName())) {
-                    if (valuesAnnForEachEntityFrom == null) {
-                        valuesAnnForEachEntityFrom = annotationValues;
+                    if (valuesAnnForEachRecordFrom == null) {
+                        valuesAnnForEachRecordFrom = annotationValues;
                     } else {
                         processingEnv.getMessager().printMessage(
                                 Diagnostic.Kind.ERROR,
-                                "A @Migration must have exactly one @ForEachEntityFrom annotation applied"
+                                "A @Migration must have exactly one @ForEachRecordFrom annotation applied"
                         );
                         thisMigrationIsInvalid = true;
                     }
@@ -122,10 +122,10 @@ public class DependencyResolution {
                 thisMigrationIsInvalid = true;
             }
 
-            if (valuesAnnForEachEntityFrom == null) {
+            if (valuesAnnForEachRecordFrom == null) {
                 processingEnv.getMessager().printMessage(
                         Diagnostic.Kind.ERROR,
-                        "A @Migration must have a @ForEachEntityFrom annotation applied"
+                        "A @Migration must have a @ForEachRecordFrom annotation applied"
                 );
                 thisMigrationIsInvalid = true;
             }
@@ -151,7 +151,7 @@ public class DependencyResolution {
                 ComptimeMigration m = createComptimeMigration(
                         migrationClass,
                         valuesAnnMigration,
-                        valuesAnnForEachEntityFrom,
+                        valuesAnnForEachRecordFrom,
                         valuesAnnsMatchWith,
                         valuesAnnTransformAndSaveTo
                 );
@@ -205,7 +205,7 @@ public class DependencyResolution {
     private ComptimeMigration createComptimeMigration(
             TypeElement migrationClass,
             Map<String, Object> valuesAnnMigration,
-            Map<String, Object> valuesAnnForEachEntityFrom,
+            Map<String, Object> valuesAnnForEachRecordFrom,
             List<Map<String, Object>> valuesAnnsMatchWith,
             Map<String, Object> valuesAnnTransformAndSaveTo
     ) {
@@ -229,15 +229,15 @@ public class DependencyResolution {
 
         PForEachRecordFrom pForEachRecordFrom = null;
         {
-            String srcDataStoreFQCN = (String) valuesAnnForEachEntityFrom.get("value");
+            String srcDataStoreFQCN = (String) valuesAnnForEachRecordFrom.get("value");
             if (srcDataStoreFQCN == null) {
                 processingEnv.getMessager().printMessage(
                         Diagnostic.Kind.ERROR,
-                        "@ForEachEntityFrom annotation has no value for data store class???"
+                        "@ForEachRecordFrom annotation has no value for data store class???"
                 );
                 migrationIsInvalid = true;
             } else {
-                pForEachRecordFrom = new PForEachRecordFrom(srcDataStoreFQCN, valuesAnnForEachEntityFrom);
+                pForEachRecordFrom = new PForEachRecordFrom(srcDataStoreFQCN, valuesAnnForEachRecordFrom);
             }
         }
 
@@ -393,7 +393,7 @@ public class DependencyResolution {
                             + "Check that there are no loops, no mutual dependencies\n"
                             + "(e.g. A -> B and B -> A), and most importantly, there\n"
                             + "must be no two migration with the same source and/or\n"
-                            + "target data stores (which are defined in @ForEachEntityFrom\n"
+                            + "target data stores (which are defined in @ForEachRecordFrom\n"
                             + "and @TransformAndSaveTo)\n"
                             + "\n\n"
                             + "Original exception: "

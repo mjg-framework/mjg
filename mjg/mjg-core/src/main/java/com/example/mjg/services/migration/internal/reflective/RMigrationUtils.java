@@ -40,7 +40,8 @@ public class RMigrationUtils {
         this.rTransformAndSaveTo = rTransformAndSaveTo;
     }
 
-    public Map<Object, Object> callMatchingMethod(RMatchWith rMatchWith, MigratableEntity record) {
+    public Map<Object, Object> callMatchingMethod(RMatchWith rMatchWith, MigratableEntity record)
+    throws Exception {
         String methodName = "matchWith" + rMatchWith.getMatchWith().value().getSimpleName();
         DataStore<?, ?, ?> matchingStoreInstance = dataStoreRegistry.get(rMatchWith.getDataStoreReflection().getStoreClass().getCanonicalName());
 
@@ -89,7 +90,8 @@ public class RMigrationUtils {
         return filters;
     }
 
-    public void callStartReductionMethod(Map<String, Object> aggregates) {
+    public void callStartReductionMethod(Map<String, Object> aggregates)
+    throws Exception {
         String methodName = "startReduction";
 
         final Method method;
@@ -114,7 +116,8 @@ public class RMigrationUtils {
         );
     }
 
-    public void callReduceMethod(RMatchWith rMatchWith, Map<String, Object> aggregates, List<MigratableEntity> moreMatchingRecords) {
+    public void callReduceMethod(RMatchWith rMatchWith, Map<String, Object> aggregates, List<MigratableEntity> moreMatchingRecords)
+    throws Exception {
         String methodName = "reduceFrom" + rMatchWith.getMatchWith().value().getSimpleName();
 
         final Method method;
@@ -140,7 +143,8 @@ public class RMigrationUtils {
         );
     }
 
-    public List<MigratableEntity> callTransformMethod(Map<String, Object> aggregates, MigratableEntity oldRecord) {
+    public List<MigratableEntity> callTransformMethod(Map<String, Object> aggregates, MigratableEntity oldRecord)
+    throws Exception {
         String methodName = "transform";
 
         final Method method;
@@ -189,7 +193,7 @@ public class RMigrationUtils {
     public List<MigratableEntity> callHandleDuplicateMethod(
         MigratableEntity inputRecord,
         List<MigratableEntity> outputRecordsFromTransform
-    ) {
+    ) throws Exception {
         DataStore<?, ?, ?> inputDataStoreInstance = dataStoreRegistry.get(
             rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
         );

@@ -120,15 +120,9 @@ below.
 ```typescript
 type MigrationProgress_ObjectSchema = {
     "metadata": {
-        "timestamp": string,
-        "migrationClasses": {
-            [fqcn: string]: {
-                "fqcn": string,
-                "forEachEntityFrom": { "value": string, [key: string]: string },
-                "matchWiths": Array<{ "value": string, [key: string]: string }>,
-                "transformAndSaveTo": { "value": string, [key: string]: string },
-            },
-        },
+        "timestamp": string /*e.g. "2025-08-29T00:33:51.600238326"*/,
+        "completedMigrationFQCNs": Array<string>, /*array of migration FQCNs*/
+        "inProgressMigrationFQCNs": Array<string>, /*array of migration FQCNs*/
     },
     
     "migrationProgress": {

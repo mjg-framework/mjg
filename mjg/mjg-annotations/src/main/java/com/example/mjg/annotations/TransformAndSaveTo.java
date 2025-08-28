@@ -19,8 +19,4 @@ public @interface TransformAndSaveTo {
     ErrorResolution inCaseOfError() default @ErrorResolution;
 
     int batchSize() default 512;
-
-    int retries() default 1;
-
-    int retryDelayInSeconds() default 3;
 }
