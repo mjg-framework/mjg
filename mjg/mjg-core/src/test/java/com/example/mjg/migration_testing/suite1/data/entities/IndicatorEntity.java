@@ -1,7 +1,6 @@
 package com.example.mjg.migration_testing.suite1.data.entities;
 
 import com.example.mjg.data.MigratableEntity;
-import com.example.mjg.utils.ObjectMapperFactory;
 import lombok.*;
 
 @Getter
