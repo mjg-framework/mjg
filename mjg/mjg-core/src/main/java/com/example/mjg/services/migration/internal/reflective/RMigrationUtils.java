@@ -40,8 +40,11 @@ public class RMigrationUtils {
         this.rTransformAndSaveTo = rTransformAndSaveTo;
     }
 
-    public Map<Object, Object> callMatchingMethod(RMatchWith rMatchWith, MigratableEntity record)
-    throws Exception {
+    public Map<Object, Object> callMatchingMethod(
+        RMatchWith rMatchWith,
+        MigratableEntity record,
+        Map<String, Object> aggregates
+    ) throws Exception {
         String methodName = "matchWith" + rMatchWith.getMatchWith().value().getSimpleName();
         DataStore<?, ?, ?> matchingStoreInstance = dataStoreRegistry.get(rMatchWith.getDataStoreReflection().getStoreClass().getCanonicalName());
 
@@ -56,6 +59,7 @@ public class RMigrationUtils {
                         methodName,
                         List.of(
                             rForEachRecordFrom.getDataStoreReflection().getEntityClass(),
+                            Map.class,
                             rMatchWith.getDataStoreReflection().getStoreClass()
                         )
                     )
@@ -67,13 +71,13 @@ public class RMigrationUtils {
         {
             Object rawFilters = invokeMethod(
                 method,
+
                 record,
+                aggregates,
                 matchingStoreInstance
             );
 
-            if (rawFilters == null) {
-                filters = Map.of();
-            } else {
+            if (rawFilters != null) {
                 if (rawFilters instanceof Map<?, ?> map) {
                     @SuppressWarnings("unchecked")
                     Map<Object, Object> castFilterMap = (Map<Object, Object>)map;
@@ -90,7 +94,10 @@ public class RMigrationUtils {
         return filters;
     }
 
-    public void callStartReductionMethod(Map<String, Object> aggregates)
+    public void callStartReductionMethod(
+        MigratableEntity record,
+        Map<String, Object> aggregates
+    )
     throws Exception {
         String methodName = "startReduction";
 
@@ -103,15 +110,20 @@ public class RMigrationUtils {
                 method = getMethodBySignatureAndCache(
                     new RMethodSignature(
                         methodName,
-                        List.of(Map.class)
+
+                        List.of(
+                            rForEachRecordFrom.getDataStoreReflection().getEntityClass(),
+                            Map.class
+                        )
                     )
                 );
             }
         }
-        
+
         invokeMethod(
             method,
 
+            record,
             aggregates
         );
     }

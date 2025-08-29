@@ -19,7 +19,10 @@ import java.util.Map;
     cardinality = Cardinality.EXACTLY_ONE
 )
 public class M2_Migrate_Data_From_StationStore_To_StationStore2 {
-    public void startReduction(Map<String, Object> aggregates) {}
+    public void startReduction(
+        StationEntity inputRecord,
+        Map<String, Object> aggregates
+    ) {}
 
     public List<StationEntity> transform(
         Map<String, Object> aggregates,

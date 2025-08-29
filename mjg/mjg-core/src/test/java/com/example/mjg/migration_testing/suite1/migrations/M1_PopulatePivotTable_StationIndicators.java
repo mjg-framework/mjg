@@ -59,21 +59,25 @@ public class M1_PopulatePivotTable_StationIndicators {
         return true;
     }
 
+    public void startReduction(
+        StationEntity inputRecord,
+        Map<String, Object> aggregates
+    ) {
+        if (!toss("startReduction")) {
+            throw new RuntimeException("Fake error while starting reduction :)))");
+        }
+        aggregates.put("indicators", new ArrayList<IndicatorEntity>());
+    }
+
     public Map<FilterIndicatorsBy, Object> matchWithIndicatorStore(
         StationEntity record,
+        Map<String, Object> aggregates,
         IndicatorStore indicatorStore
     ) {
         if (!toss("matchWithIndicatorStore")) {
             throw new RuntimeException("Fake error while matching with indicator store :)))");
         }
         return Map.of(); // get all, no filter
-    }
-
-    public void startReduction(Map<String, Object> aggregates) {
-        if (!toss("startReduction")) {
-            throw new RuntimeException("Fake error while starting reduction :)))");
-        }
-        aggregates.put("indicators", new ArrayList<IndicatorEntity>());
     }
 
     public void reduceFromIndicatorStore(

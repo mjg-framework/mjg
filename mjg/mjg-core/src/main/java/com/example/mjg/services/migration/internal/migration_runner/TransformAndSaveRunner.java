@@ -8,11 +8,13 @@ import com.example.mjg.exceptions.DuplicateDataException;
 import com.example.mjg.exceptions.RetriesExhaustedException;
 import com.example.mjg.services.migration.internal.RecordProcessingContext;
 import com.example.mjg.services.migration.internal.fault_tolerance.FailedRecordGroup;
+import com.example.mjg.services.migration.internal.fault_tolerance.SuccessfulRecordGroup;
 import com.example.mjg.services.migration.internal.reflective.RTransformAndSaveTo;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -156,29 +158,45 @@ class TransformAndSaveRunner {
 
         final int BATCH_SIZE = rTransformAndSaveTo.getTransformAndSaveTo().batchSize();
 
-        // Split into chunks/batches of output records that are transformed from one *same input record*.
-        // Reason? For error reporting.
-        // If one chunk is too large, split it further.
-        outputContextsStream.forEach(outputContext -> {
-            List<MigratableEntity> outputRecords = outputContext.getOutputRecords();
+        List<MigratableEntity> successfulOutputRecords = new ArrayList<>();
 
-            int beginPos = 0;
-            int endPos = Math.min(BATCH_SIZE, outputRecords.size());
+        try {
+            // Split into chunks/batches of output records that are transformed from one *same input record*.
+            // Reason? For error reporting.
+            // If one chunk is too large, split it further.
+            // TODO: A parallelStream here won't do any good I guess
+            outputContextsStream.forEach(outputContext -> {
+                List<MigratableEntity> outputRecords = outputContext.getOutputRecords();
 
-            while (endPos <= outputRecords.size()) {
-                if (beginPos >= endPos) break;
-                final List<MigratableEntity> outputRecordsBatch = outputRecords.subList(beginPos, endPos);
-                final RecordOutputContext subCtx = new RecordOutputContext(
-                    outputContext.getInputRecord(),
-                    outputRecordsBatch
-                );
-                try {
-                    fromOutputContext_SaveAndResolveDuplicatesIfAny.apply(subCtx);
-                } catch (RetriesExhaustedException ignored) {}
-                beginPos = endPos;
-                endPos = Math.min(endPos + BATCH_SIZE, outputRecords.size());
+                int beginPos = 0;
+                int endPos = Math.min(BATCH_SIZE, outputRecords.size());
+
+                while (endPos <= outputRecords.size()) {
+                    if (beginPos >= endPos) break;
+                    final List<MigratableEntity> outputRecordsBatch = outputRecords.subList(beginPos, endPos);
+                    final RecordOutputContext subCtx = new RecordOutputContext(
+                        outputContext.getInputRecord(),
+                        outputRecordsBatch
+                    );
+                    try {
+                        fromOutputContext_SaveAndResolveDuplicatesIfAny.apply(subCtx);
+                        successfulOutputRecords.add(subCtx.getInputRecord());
+                    } catch (RetriesExhaustedException ignored) {
+                    }
+                    beginPos = endPos;
+                    endPos = Math.min(endPos + BATCH_SIZE, outputRecords.size());
+                }
+            });
+        } finally {
+            if (!successfulOutputRecords.isEmpty()) {
+                migrationRunner.getMigrationErrorInvestigator()
+                    .reportSuccessfulRecords(
+                        new SuccessfulRecordGroup(
+                            successfulOutputRecords,
+                            migrationRunner
+                        )
+                    );
             }
-        });
-        // TODO: A parallelStream here won't do any good I guess
+        }
     }
 }

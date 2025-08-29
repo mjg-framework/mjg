@@ -1,16 +1,14 @@
 spring:
   application:
-    name: mongo-migrate-multids
+    name: mongo_migrate_multids
 
 # Configure both source & target here
 data:
   mongodb:
     source:
       uri: mongodb://localhost:27017/eos
-    target:
+    dest:
       uri: mongodb://localhost:27017/eos_metadata_target
-    self:
-      uri: mongodb://localhost:27017/eos_migration
 
 logging:
   level:

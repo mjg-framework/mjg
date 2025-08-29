@@ -1,3 +1,6 @@
+# mjg's migration progress files
+migrat*.json
+
 # Compiled class files
 *.class
 

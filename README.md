@@ -23,8 +23,8 @@ data:
 
 ## Build & Run
 ```bash
-mvn -q -DskipTests package
-java -jar target/mongo-migrate-multids-0.0.1-SNAPSHOT.jar
+mvn -DskipTests clean compile test-compile package
+java -jar mongo_migrate_multids/target/mongo_migrate_multids-0.0.1-SNAPSHOT.jar
 ```
 
 By default, `MigrateRunner` migrates the `users` collection using `MigrationService`.

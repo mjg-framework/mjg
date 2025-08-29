@@ -17,4 +17,6 @@ public @interface MatchWith {
     ErrorResolution inCaseOfError() default @ErrorResolution;
 
     int batchSize() default 512;
+
+    int order() default 0;
 }

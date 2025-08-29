@@ -18,6 +18,7 @@ import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @AllArgsConstructor
@@ -348,12 +349,27 @@ public class DependencyResolution {
             if (sortedSameOrderMigrations == null) {
                 processingEnv.getMessager().printMessage(
                         Diagnostic.Kind.ERROR,
-                        "Stopped building migration execution plan earlier."
+                        "Stopped building migration execution plan earlier.\nNO MIGRATIONS' ORDER OF EXECUTION ESTABLISHED"
                 );
                 return null;
             }
             sortedMigrations.addAll(
                     sortedSameOrderMigrations
+            );
+
+            AtomicInteger counter = new AtomicInteger(0);
+            processingEnv.getMessager().printMessage(
+                Diagnostic.Kind.NOTE,
+                "MIGRATIONS' ORDER OF EXECUTION:\n        "
+                    + String.join(
+                    ",\n        ",
+                    sortedMigrations.stream().map(
+                        comptimeMigration -> {
+                            return counter.incrementAndGet() + ". "
+                                + comptimeMigration.getPMigration().getFQCN();
+                        }
+                    ).toList()
+                )
             );
         }
 

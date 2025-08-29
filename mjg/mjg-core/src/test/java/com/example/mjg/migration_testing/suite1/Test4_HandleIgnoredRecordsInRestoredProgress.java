@@ -191,7 +191,7 @@ public class Test4_HandleIgnoredRecordsInRestoredProgress {
         );
 
         try {
-            MigrationService.getInst().addProgressPersistenceCallback(
+            MigrationService._getInstForTesting().addProgressPersistenceCallback(
                 migrationProgress -> {
                     Test4_HandleIgnoredRecordsInRestoredProgress.saveMigrationProgressToFileAndIgnoreSome(
                         migrationProgress,
@@ -214,7 +214,7 @@ public class Test4_HandleIgnoredRecordsInRestoredProgress {
                     M1_PopulatePivotTable_StationIndicators.disableFailRandomly();
                 }
 
-                MigrationService.getInst().run(progress);
+                MigrationService._getInstForTesting().run(progress);
 
                 progress = Test4_HandleIgnoredRecordsInRestoredProgress.loadMigrationProgressFromFile("migration-progress-test-4-run-" + i + ".json");
 

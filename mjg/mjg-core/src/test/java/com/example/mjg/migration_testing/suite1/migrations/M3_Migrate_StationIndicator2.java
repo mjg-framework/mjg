@@ -36,20 +36,25 @@ import java.util.Map;
 )
 public class M3_Migrate_StationIndicator2 {
     public Map<FilterStationsBy2, Object> matchWithStationStore2(
-            StationIndicatorEntity record,
-            StationStore2 stationStore2
+        StationIndicatorEntity record,
+        Map<String, Object> aggregates,
+        StationStore2 stationStore2
     ) {
         return Map.of(FilterStationsBy2.STATION_CODE, "new code " + record.getStationCode());
     }
 
     public Map<FilterMeasurementResultsBy, Object> matchWithMeasurementResultStore(
-            StationIndicatorEntity record,
-            MeasurementResultStore measurementResultStore
+        StationIndicatorEntity record,
+        Map<String, Object> aggregates,
+        MeasurementResultStore measurementResultStore
     ) {
         return Map.of(FilterMeasurementResultsBy.STATION_INDICATOR_ID, record.getId());
     }
 
-    public void startReduction(Map<String, Object> aggregates) {
+    public void startReduction(
+        StationIndicatorEntity inputRecord,
+        Map<String, Object> aggregates
+    ) {
         aggregates.put("station", null);
         aggregates.put("sumValues", 0.0);
         aggregates.put("countValues", 0);

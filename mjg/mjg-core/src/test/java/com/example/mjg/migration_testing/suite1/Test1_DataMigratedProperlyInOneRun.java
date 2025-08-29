@@ -129,7 +129,7 @@ public class Test1_DataMigratedProperlyInOneRun {
             }
         };
 
-        MigrationService.getInst().addProgressPersistenceCallback(
+        MigrationService._getInstForTesting().addProgressPersistenceCallback(
             migrationProgress -> {
                 saveMigrationProgressToFile.accept(
                     migrationProgress,
@@ -137,7 +137,7 @@ public class Test1_DataMigratedProperlyInOneRun {
                 );
             }
         );
-        MigrationService.getInst().runWithoutPreviousProgress();
+        MigrationService._getInstForTesting().runWithoutPreviousProgress();
     }
 
     @Test

@@ -36,8 +36,10 @@ public class MigrationProgressManager {
                 log.info("Stopping gracefully. Please do not kill this process!");
                 try {
                     // Wait for stuff to finalize
-                    Thread.sleep(1000);
-                } catch (InterruptedException ignored) {}
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    this.flush();
+                }
 
                 this.flush();
 

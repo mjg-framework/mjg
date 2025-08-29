@@ -87,6 +87,7 @@ public class MigrationRunner {
         );
 
         this.rMatchWiths = this.matchWiths.stream()
+            .sorted(Comparator.comparingInt(MatchWith::order))
             .map(matchWith -> new RMatchWith(
                 migrationClass,
                 matchWith,
@@ -197,7 +198,7 @@ public class MigrationRunner {
                 .toList();
             
             // Process
-            if (recordsToMigrate.size() > 0) {
+            if (!recordsToMigrate.isEmpty()) {
                 migrateRecords(recordsToMigrate);
             }
             
@@ -222,11 +223,12 @@ public class MigrationRunner {
         anyFailed |= anyFailedMidOperation.get();
         anyFailedMidOperation.set(false);
 
-        if (!anyFailed) {
-            migrationErrorInvestigator.reportSuccessfulRecords(
-                new SuccessfulRecordGroup(inputRecords, this)
-            );
-        }
+        // NOW REPORT INSIDE transformAndSaveRunner
+        // if (!anyFailed) {
+        //    migrationErrorInvestigator.reportSuccessfulRecords(
+        //        new SuccessfulRecordGroup(inputRecords, this)
+        //    );
+        // }
     }
 
     private static List<MatchWith> buildMatchingPlan(MatchWith[] matchWiths) {

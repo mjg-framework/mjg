@@ -49,12 +49,12 @@ public class MethodsValidation {
         this.srcStoreType = elementUtils.getTypeElement(
             comptimeMigration.getSrcDataStoreFQCN()
         ).asType();
-        this.inputEntityType = ComptimeUtils.getDataStoreTypeArguments(srcStoreType).get(0);
+        this.inputEntityType = ComptimeUtils.getDataStoreTypeArguments(elementUtils, typeUtils, srcStoreType).get(0);
 
         this.destStoreType = elementUtils.getTypeElement(
             comptimeMigration.getDestDataStoreFQCN()
         ).asType();
-        this.outputEntityType = ComptimeUtils.getDataStoreTypeArguments(destStoreType).get(0);
+        this.outputEntityType = ComptimeUtils.getDataStoreTypeArguments(elementUtils, typeUtils, destStoreType).get(0);
 
         this.matchingStoreFQCNs = comptimeMigration.getPMatchWiths()
                 .stream()
@@ -139,7 +139,7 @@ public class MethodsValidation {
             .stream()
             .map((fqcn) -> {
                 TypeMirror storeType = elementUtils.getTypeElement(fqcn).asType();
-                var temp = ComptimeUtils.getDataStoreTypeArguments(storeType);
+                var temp = ComptimeUtils.getDataStoreTypeArguments(elementUtils, typeUtils, storeType);
                 TypeMirror storeEntityType = temp.get(0);
                 TypeMirror storeFilterTypeType = temp.get(1);
                 TypeMirror storeFilterValueType = temp.get(2);
@@ -147,7 +147,7 @@ public class MethodsValidation {
                 String storeName = fqcn.substring(fqcn.lastIndexOf('.') + 1);
                 return List.of(
                     new MethodPrototype(
-                        // Map<FILTER_TYPE, FILTER_VALUE> matchWith...(Entity, DataStore);
+                        // Map<FILTER_TYPE, FILTER_VALUE> matchWith...(Entity, Map<String, Object>, DataStore);
                         typeUtils.getDeclaredType(
                             elementUtils.getTypeElement("java.util.Map"),
                             storeFilterTypeType,
@@ -156,7 +156,17 @@ public class MethodsValidation {
 
                         "matchWith" + storeName,
 
-                        List.of(inputEntityType, storeType)
+                        List.of(
+                            inputEntityType,
+
+                            typeUtils.getDeclaredType(
+                                elementUtils.getTypeElement("java.util.Map"),
+                                elementUtils.getTypeElement("java.lang.String").asType(),
+                                elementUtils.getTypeElement("java.lang.Object").asType()
+                            ),
+
+                            storeType
+                        )
                     ),
 
                     new MethodPrototype(
@@ -207,12 +217,14 @@ public class MethodsValidation {
             ),
 
             new MethodPrototype(
-                // void startReduction(Map<String, Object> aggregates)
+                // void startReduction(Entity inputRecord, Map<String, Object> aggregates)
                 typeUtils.getNoType(TypeKind.VOID),
 
                 "startReduction",
 
                 List.of(
+                    inputEntityType,
+
                     typeUtils.getDeclaredType(
                         elementUtils.getTypeElement("java.util.Map"),
                         elementUtils.getTypeElement("java.lang.String").asType(),

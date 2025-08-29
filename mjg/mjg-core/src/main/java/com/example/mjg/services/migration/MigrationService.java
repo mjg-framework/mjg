@@ -25,18 +25,22 @@ public class MigrationService {
         private static final MigrationService instance = new MigrationService();
     };
 
-    public static MigrationService getInst() {
+    public static MigrationService _getInstForTesting() {
         return InstanceHolder.instance;
     }
 
     @Getter
-    private final DataStoreRegistry dataStoreRegistry = new DataStoreRegistry();
+    private DataStoreRegistry dataStoreRegistry = new DataStoreRegistry();
 
     @Getter
     private final MigrationRegistry migrationRegistry = new MigrationRegistry();
 
     @Getter
     private final MigrationProgressManager migrationProgressManager = new MigrationProgressManager();
+
+    public MigrationService(DataStoreRegistry dataStoreRegistry) {
+        this.dataStoreRegistry = dataStoreRegistry;
+    }
 
     public void run(MigrationProgress previousProgress) {
         migrationProgressManager.restorePreviousProgress(previousProgress);

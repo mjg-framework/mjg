@@ -90,7 +90,7 @@ public class Test2_HandleDuplicates {
     @BeforeAll
     public static void setup() {
         AtomicInteger numTimesHandleDuplicateCalled = (
-            (M1_PopulatePivotTable_StationIndicators) MigrationService.getInst()
+            (M1_PopulatePivotTable_StationIndicators) MigrationService._getInstForTesting()
                 .getMigrationRegistry().get(
                     M1_PopulatePivotTable_StationIndicators.class.getCanonicalName()
                 )
@@ -146,7 +146,7 @@ public class Test2_HandleDuplicates {
         };
 
         // First run
-        MigrationService.getInst().addProgressPersistenceCallback(
+        MigrationService._getInstForTesting().addProgressPersistenceCallback(
             migrationProgress -> {
                 saveMigrationProgressToFile.accept(
                     migrationProgress,
@@ -154,15 +154,15 @@ public class Test2_HandleDuplicates {
                 );
             }
         );
-        MigrationService.getInst().run(new MigrationProgress());
+        MigrationService._getInstForTesting().run(new MigrationProgress());
         assertEquals(
             INITIAL_STATIONS,
             MockDataLoader.getStore(StationStore.class).getRecords()
         );
 
         // Rerun to see how it skips migrated records from previous run
-        MigrationService.getInst().removeAllProgressPersistenceCallbacks();
-        MigrationService.getInst().addProgressPersistenceCallback(
+        MigrationService._getInstForTesting().removeAllProgressPersistenceCallbacks();
+        MigrationService._getInstForTesting().addProgressPersistenceCallback(
             migrationProgress -> {
                 saveMigrationProgressToFile.accept(
                     migrationProgress,
@@ -171,11 +171,11 @@ public class Test2_HandleDuplicates {
             }
         );
 
-        MigrationService.getInst().runWithPreviousProgress();
+        MigrationService._getInstForTesting().runWithPreviousProgress();
 
         // Rerun to see how it handles duplicates
-        MigrationService.getInst().removeAllProgressPersistenceCallbacks();
-        MigrationService.getInst().addProgressPersistenceCallback(
+        MigrationService._getInstForTesting().removeAllProgressPersistenceCallbacks();
+        MigrationService._getInstForTesting().addProgressPersistenceCallback(
             migrationProgress -> {
                 saveMigrationProgressToFile.accept(
                     migrationProgress,
@@ -184,13 +184,13 @@ public class Test2_HandleDuplicates {
             }
         );
 
-        MigrationService.getInst().runWithoutPreviousProgress();
+        MigrationService._getInstForTesting().runWithoutPreviousProgress();
     }
 
     @Test
     public void testHandleDuplicateCalled() {
         AtomicInteger numTimesHandleDuplicateCalled = (
-            (M1_PopulatePivotTable_StationIndicators) MigrationService.getInst()
+            (M1_PopulatePivotTable_StationIndicators) MigrationService._getInstForTesting()
                 .getMigrationRegistry().get(
                     M1_PopulatePivotTable_StationIndicators.class.getCanonicalName()
                 )

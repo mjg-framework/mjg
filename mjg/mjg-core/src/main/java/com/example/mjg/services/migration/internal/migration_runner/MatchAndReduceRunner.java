@@ -37,6 +37,7 @@ public class MatchAndReduceRunner {
         // TODO: Probably should not use parallelStream() here,
         // TODO: since several simultaneous matching operations
         // TODO: could eat up too much memory.
+        // TODO: Second, ordering is important!
         for (RMatchWith rMatchWith : rMatchWiths) {
             matchAndReduceRecordsPerMatching(anyFailed, rMatchWith, inputContexts, inputRecords);
         }
@@ -69,7 +70,7 @@ public class MatchAndReduceRunner {
             .withCallback(arg -> {
                 RecordProcessingContext ctx = (RecordProcessingContext) arg;
                 migrationRunner.getRMigrationUtils()
-                    .callStartReductionMethod(ctx.getAggregates());
+                    .callStartReductionMethod(ctx.getRecord(), ctx.getAggregates());
 
                 return null;
             });
@@ -115,8 +116,13 @@ public class MatchAndReduceRunner {
                 anyFailed.set(true);
 
                 List<MigratableEntity> problematicRecords;
-                if (arg instanceof MigratableEntity record) {
-                    problematicRecords = List.of(record);
+                if (arg instanceof RecordProcessingContext ctx) {
+                    problematicRecords = List.of(ctx.getRecord());
+                } else if (arg != null && arg.getClass().isArray()) {
+                    RecordProcessingContext ctx1 = (RecordProcessingContext) (
+                        ((Object[]) arg)[0]
+                    );
+                    problematicRecords = List.of(ctx1.getRecord());
                 } else {
                     problematicRecords = inputRecords;
                 }
@@ -140,16 +146,30 @@ public class MatchAndReduceRunner {
             .withCallback(((DataStore<MigratableEntity, Object, Object>) store)::getNextPageOfRecordsAfter);
         
         var callMatchingMethod = retryLogic
-            .withCallback((MigratableEntity record) -> {
-                return rMigrationUtils.callMatchingMethod(rMatchWith, record);
+            .withCallback((RecordProcessingContext ctx) -> {
+                return rMigrationUtils.callMatchingMethod(rMatchWith, ctx.getRecord(), ctx.getAggregates());
+            });
+
+        var callReduceMethod = retryLogic
+            .withCallback((Object[] args) -> {
+                RecordProcessingContext ctx = (RecordProcessingContext) args[0];
+                List<MigratableEntity> moreMatchingRecords = (List<MigratableEntity>) args[1];
+                rMigrationUtils.callReduceMethod(
+                    rMatchWith,
+                    ctx.getAggregates(),
+                    moreMatchingRecords
+                );
+                return null;
             });
 
         // Group records by matching filter sets
         Map<Map<Object, Object>, List<RecordProcessingContext>> recordContextsByFiltersMap = new ConcurrentHashMap<>();
         // TODO: parallelStream here could improve speed.
+        // TODO: But aggregates are being mutated...
         recordContexts.forEach(recordContext -> {
             try {
-                Map<Object, Object> filterSet = callMatchingMethod.apply(recordContext.getRecord());
+                Map<Object, Object> filterSet = callMatchingMethod.apply(recordContext);
+                if (filterSet == null) return;
 
                 List<RecordProcessingContext> contextsOfSameFilterSet = recordContextsByFiltersMap.computeIfAbsent(
                     filterSet,
@@ -184,7 +204,10 @@ public class MatchAndReduceRunner {
                         // TODO: parallelStream() here might improve speed,
                         // TODO: but ctx.getAggregates() is being mutated, so...
                         for (RecordProcessingContext ctx : inputRecordContexts) {
-                            rMigrationUtils.callReduceMethod(rMatchWith, ctx.getAggregates(), moreMatchingRecords);
+                            callReduceMethod.apply(
+                                new Object[]{ctx, moreMatchingRecords}
+                            );
+                            // rMigrationUtils.callReduceMethod(rMatchWith, ctx.getAggregates(), moreMatchingRecords);
                         }
 
                         matchingPage = getNextPageOfRecordsAfter.apply((DataPage) matchingPage);

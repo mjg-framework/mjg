@@ -164,7 +164,7 @@ public class Test3_ProgressPersistanceAndContinuation {
 
         try {
             AtomicInteger runIndex = new AtomicInteger(0);
-            MigrationService.getInst().addProgressPersistenceCallback(
+            MigrationService._getInstForTesting().addProgressPersistenceCallback(
                 migrationProgress -> {
                     Test3_ProgressPersistanceAndContinuation.saveMigrationProgressToFile(
                         migrationProgress,
@@ -187,7 +187,7 @@ public class Test3_ProgressPersistanceAndContinuation {
                     M1_PopulatePivotTable_StationIndicators.disableFailRandomly();
                 }
 
-                MigrationService.getInst().run(progress);
+                MigrationService._getInstForTesting().run(progress);
 
                 progress = Test3_ProgressPersistanceAndContinuation.loadMigrationProgressFromFile("migration-progress-test-3-run-" + i + ".json");
 

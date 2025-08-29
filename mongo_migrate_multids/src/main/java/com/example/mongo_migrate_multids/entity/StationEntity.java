@@ -6,6 +6,9 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import com.example.mongo_migrate_multids.entity.common.BaseEntity;
+import com.example.mongo_migrate_multids.helpers.ObjectIdHelpers;
+
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,6 +17,19 @@ import java.util.List;
 @Getter
 @Setter
 public class StationEntity extends BaseEntity {
+    @Override
+    public Object getMigratableId() {
+        return id;
+    }
+
+    @Override
+    public String getMigratableDescription() {
+        return "StationEntity(id=" + id + ", largeInteger=" + (
+            id == null ? "null" : ObjectIdHelpers.convertObjectIdToLargeInteger(id)
+        )
+            + ", code=" + stationCode
+            + ")";
+    }
 
     @Id
     public String id;

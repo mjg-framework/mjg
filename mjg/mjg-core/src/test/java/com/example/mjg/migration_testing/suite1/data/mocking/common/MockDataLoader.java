@@ -31,7 +31,7 @@ public class MockDataLoader {
         Class<? extends DataStore<?, ?, ?>> dataStoreClass
     ) {
         @SuppressWarnings("unchecked")
-        DataStore<T, ?, ?> dataStore = (DataStore<T, ?, ?>) MigrationService.getInst()
+        DataStore<T, ?, ?> dataStore = (DataStore<T, ?, ?>) MigrationService._getInstForTesting()
             .getDataStoreRegistry()
             .get(dataStoreClass.getCanonicalName());
 

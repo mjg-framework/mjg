@@ -11,6 +11,6 @@
 
     <modules>
         <module>mjg</module>
-<!--        <module>mongo_migrate_multids</module>-->
+        <module>mongo_migrate_multids</module>
     </modules>
 </project>

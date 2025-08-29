@@ -5,10 +5,9 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class ComptimeUtils {
@@ -129,24 +128,59 @@ public class ComptimeUtils {
         return true;
     }
 
-    public static List<? extends TypeMirror> getDataStoreTypeArguments(TypeMirror storeType) {
+    public static List<? extends TypeMirror> getDataStoreTypeArguments(
+        Elements elementUtils,
+        Types typeUtils,
+        TypeMirror storeType
+    ) {
+        // if (storeType.getKind() != TypeKind.DECLARED) {
+        //     throw new IllegalArgumentException("not a declared type.");
+        // }
+
+        // DeclaredType declaredType = (DeclaredType) storeType;
+        // TypeElement storeClass = (TypeElement) declaredType.asElement();
+        // TypeMirror superType = storeClass.getSuperclass();
+        // if (superType.getKind() != TypeKind.DECLARED) {
+        //     throw new IllegalArgumentException("not a declared type..");
+        // }
+        // DeclaredType superDeclaredType = (DeclaredType) superType;
+
+        // List<? extends TypeMirror> typeArguments = superDeclaredType.getTypeArguments();
+        // if (typeArguments.size() < 3) {
+        //     throw new IllegalArgumentException("not enough arguments for a DataStore??? (at least 3 iirc)");
+        // }
+
+        // return typeArguments;
+
+        // Cre ChatGPT, this is hell
         if (storeType.getKind() != TypeKind.DECLARED) {
-            throw new IllegalArgumentException("not a declared type.");
+            throw new IllegalArgumentException("Not a declared type: " + storeType);
         }
 
-        DeclaredType declaredType = (DeclaredType) storeType;
-        TypeElement storeClass = (TypeElement) declaredType.asElement();
-        TypeMirror superType = storeClass.getSuperclass();
-        if (superType.getKind() != TypeKind.DECLARED) {
-            throw new IllegalArgumentException("not a declared type..");
-        }
-        DeclaredType superDeclaredType = (DeclaredType) superType;
+        TypeElement rootDataStoreElement =
+            elementUtils.getTypeElement("com.example.mjg.data.DataStore");
+        TypeMirror rootDataStoreTypeMirror = rootDataStoreElement.asType();
 
-        List<? extends TypeMirror> typeArguments = superDeclaredType.getTypeArguments();
-        if (typeArguments.size() < 3) {
-            throw new IllegalArgumentException("not enough arguments for a DataStore??? (at least 3 iirc)");
+        // Worklist for BFS/DFS of supertypes
+        Deque<DeclaredType> worklist = new ArrayDeque<>();
+        worklist.add((DeclaredType) storeType);
+
+        while (!worklist.isEmpty()) {
+            DeclaredType current = worklist.removeFirst();
+
+            if (typeUtils.isSameType(
+                typeUtils.erasure(current),
+                typeUtils.erasure(rootDataStoreTypeMirror))) {
+                return current.getTypeArguments();
+            }
+
+            for (TypeMirror superType : typeUtils.directSupertypes(current)) {
+                if (superType.getKind() == TypeKind.DECLARED) {
+                    worklist.add((DeclaredType) superType);
+                }
+            }
         }
 
-        return typeArguments;
+        throw new IllegalArgumentException(storeType + " does not extend DataStore");
     }
 }

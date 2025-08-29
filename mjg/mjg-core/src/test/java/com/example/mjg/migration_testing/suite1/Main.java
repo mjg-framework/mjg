@@ -38,7 +38,7 @@ public class Main {
 
         System.out.println("BEFORE MIGRATION: StationIndicatorStore content: " + MockDataLoader.getStore(StationIndicatorStore.class).getRecords());
 
-        MigrationService.getInst().runWithoutPreviousProgress();
+        MigrationService._getInstForTesting().runWithoutPreviousProgress();
 
         System.out.println("AFTER MIGRATION: StationIndicatorStore content: " + MockDataLoader.getStore(StationIndicatorStore.class).getRecords());
     }
