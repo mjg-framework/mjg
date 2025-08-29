@@ -76,6 +76,12 @@ Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.0:tes
 
 More about this method [in this section](#duplicate-error-handling).
 
+## Run Tests
+
+```sh
+mvn clean compile test-compile test
+```
+
 ## State Persistence and Error Handling
 
 ### State Persistence

@@ -217,9 +217,15 @@ public class Test2_HandleDuplicates {
 
     @Test
     public void testDataMigrated_M2() {
-        assertEquals(
-            INITIAL_STATIONS.size(),
-            MockDataLoader.getStore(StationStore2.class).getRecords().size()
+        final var migratedStationStore2Records = MockDataLoader.getStore(StationStore2.class).getRecords();
+        // The first run migrated them, the second run skipped them. The third run:
+        // If it runs M2 first, we gonna have N + N = 2*N
+        // If it runs M1 first, it would fail without running M2, so we would still have N only.
+        assertTrue(
+            Set.of(
+                INITIAL_STATIONS.size(),
+                INITIAL_STATIONS.size() * 2
+            ).contains(migratedStationStore2Records.size())
         );
     }
 

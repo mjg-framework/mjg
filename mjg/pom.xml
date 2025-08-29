@@ -22,6 +22,7 @@
         <project.dependencies.jackson.version>2.19.2</project.dependencies.jackson.version>
         <project.dependencies.jackson.jsr310.version>2.19.2</project.dependencies.jackson.jsr310.version>
         <project.dependencies.apache.commons.lang3.version>3.18.0</project.dependencies.apache.commons.lang3.version>
+        <project.dependencies.maven-surefile-plugin.version>3.5.3</project.dependencies.maven-surefile-plugin.version>
     </properties>
     
     <build>
