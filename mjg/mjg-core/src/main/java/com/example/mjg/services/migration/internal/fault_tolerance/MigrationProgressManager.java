@@ -7,6 +7,8 @@ import com.example.mjg.services.migration.internal.fault_tolerance.schemas.Migra
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgressPerMigrationClass;
 import com.example.mjg.utils.ConcurrentContainer;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -43,24 +45,64 @@ public class MigrationProgressManager {
             }));
     }
 
-    public Set<Object> getCurrentlyFailedRecordIds(String migrationFQCN) {
-        Set<Object> ids = new HashSet<>();
-        migrationProgressContainer.read(migrationProgress -> {
+    /**
+     * Get and remove.
+     */
+    public List<MigratableEntity> popFailedRecords(String migrationFQCN) {
+        List<MigratableEntity> failedRecords = new ArrayList<>();
+        migrationProgressContainer.update(migrationProgress -> {
             MigrationProgressPerMigrationClass migrationProgressOfThisMigrationClass = migrationProgress
                 .getMigrationProgress().computeIfAbsent(
                     migrationFQCN,
                     k -> new MigrationProgressPerMigrationClass(migrationFQCN)
                 );
             
-            List<Object> failedRecordIds = migrationProgressOfThisMigrationClass.getFailedRecords()
+            List<FailedRecord> failedRecordsInMigrationProgress = migrationProgressOfThisMigrationClass.getFailedRecords();
+            List<MigratableEntity> _failedRecords = failedRecordsInMigrationProgress
                 .stream()
-                .map(FailedRecord::getId)
+                .filter(failedRecord -> FailedRecordAction.Type.RETRY.equals(failedRecord.getAction().getActionType()))
+                .map(failedRecord -> (MigratableEntity) new FailedMigratableEntity(
+                    failedRecord.getId(),
+                    failedRecord.getDescription()
+                ))
                 .toList();
             
-            ids.addAll(failedRecordIds);
+            failedRecords.addAll(_failedRecords);
+
+            failedRecordsInMigrationProgress.clear();
+            return migrationProgress;
         });
 
-        return ids;
+        return failedRecords;
+    }
+
+    public Set<Object> getIgnoredRecordIds(String migrationFQCN) {
+        Set<Object> ignoredRecordIds = new HashSet<>();
+        migrationProgressContainer.read(migrationProgress -> {
+            MigrationProgressPerMigrationClass migrationProgressOfThisMigrationClass = migrationProgress
+                .getMigrationProgress().getOrDefault(
+                    migrationFQCN,
+                    new MigrationProgressPerMigrationClass(migrationFQCN)
+                );
+            
+            Set<Object> ignoredRecordIds1 = migrationProgressOfThisMigrationClass.getFailedRecords()
+                .stream()
+                .filter(failedRecord -> failedRecord.getAction().getActionType() == FailedRecordAction.Type.IGNORE)
+                .map(FailedRecord::getId)
+                .collect(Collectors.toSet());
+            
+            ignoredRecordIds.addAll(ignoredRecordIds1);
+        });
+
+        return ignoredRecordIds;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class FailedMigratableEntity implements MigratableEntity {
+        private Object migratableId;
+
+        private String migratableDescription;
     }
 
     /**
@@ -146,7 +188,7 @@ public class MigrationProgressManager {
     public void reportFailedRecords(
         FailedRecordGroup failedRecordGroup
     ) {
-        String cause = ExceptionUtils.getRootCauseMessage(failedRecordGroup.getException());
+        String cause = ExceptionUtils.getStackTrace(failedRecordGroup.getException());
 
         migrationProgressContainer.update(migrationProgress -> {
             MigrationProgressPerMigrationClass progressInThisMigrationClass = migrationProgress
@@ -154,18 +196,28 @@ public class MigrationProgressManager {
                     .computeIfAbsent(
                             failedRecordGroup.getMigrationRunner().getMigrationFQCN(),
                             MigrationProgressPerMigrationClass::new);
+            
+            List<FailedRecord> reportedFailedRecords = progressInThisMigrationClass.getFailedRecords();
 
-            progressInThisMigrationClass.getFailedRecords().addAll(
-                    failedRecordGroup.getRecords().stream()
-                            .map(failedRecord -> {
-                                return new FailedRecord(
-                                        failedRecord.getMigratableId(),
-                                        failedRecord.getMigratableDescription(),
-                                        cause,
-                                        new FailedRecordAction(FailedRecordAction.Type.RETRY),
-                                        LocalDateTime.now());
-                            })
-                            .toList());
+            // Overwriting records with same IDs
+            Set<Object> oldIds = reportedFailedRecords.stream().map(FailedRecord::getId).collect(Collectors.toSet());
+            Set<Object> newIds = failedRecordGroup.getRecords().stream().map(MigratableEntity::getMigratableId).collect(Collectors.toSet());
+            Set<Object> idsToRemove = new HashSet<>(oldIds);
+            idsToRemove.retainAll(newIds);
+            reportedFailedRecords.removeIf(failedRecord -> idsToRemove.contains(failedRecord.getId()));
+
+            reportedFailedRecords.addAll(
+                failedRecordGroup.getRecords().stream()
+                    .map(failedRecord -> {
+                        return new FailedRecord(
+                            failedRecord.getMigratableId(),
+                            failedRecord.getMigratableDescription(),
+                            cause,
+                            new FailedRecordAction(FailedRecordAction.Type.RETRY),
+                            LocalDateTime.now());
+                        })
+                    .toList()
+            );
 
             return migrationProgress;
         });

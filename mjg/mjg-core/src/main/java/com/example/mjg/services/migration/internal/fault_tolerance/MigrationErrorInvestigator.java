@@ -1,12 +1,10 @@
 package com.example.mjg.services.migration.internal.fault_tolerance;
 
 import com.example.mjg.data.MigratableEntity;
-import com.example.mjg.exceptions.RetriesExhaustedException;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
 import com.example.mjg.services.migration.internal.migration_runner.MigrationRunner;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.Set;
@@ -38,9 +36,10 @@ import java.util.stream.Collectors;
  * the normal records in the batch got migrated
  * successfully.
  */
+@Slf4j
 public class MigrationErrorInvestigator {
     private final LinkedBlockingQueue<FailedRecordGroup>
-        failedRecordGroupQueue = new LinkedBlockingQueue<>();
+        failedRecordGroupQueue;
     
     private static final FailedRecordGroup
         FailedRecordGroup_POISON = new FailedRecordGroup(
@@ -58,6 +57,8 @@ public class MigrationErrorInvestigator {
 
     private final AtomicInteger numFailures;
 
+    private final Set<Object> ignoredRecordIds;
+
     public int getNumFailures() {
         return numFailures.get();
     }
@@ -66,12 +67,17 @@ public class MigrationErrorInvestigator {
         MigrationProgressManager migrationProgressManager,
         MigrationRunner migrationRunner
     ) {
+        this.failedRecordGroupQueue = new LinkedBlockingQueue<>();
         this.migrationProgressManager = migrationProgressManager;
         this.migrationRunner = migrationRunner;
         this.numThreads = Runtime.getRuntime().availableProcessors();
         this.pool = Executors.newFixedThreadPool(numThreads);
         this.stopped = new AtomicBoolean(false);
         this.numFailures = new AtomicInteger(0);
+
+        this.ignoredRecordIds = migrationProgressManager.getIgnoredRecordIds(
+            migrationRunner.getMigrationFQCN()
+        );
     }
 
     public void startInBackground() {
@@ -95,7 +101,6 @@ public class MigrationErrorInvestigator {
             for (int i = 0; i < numThreads; i++) {
                 failedRecordGroupQueue.put(FailedRecordGroup_POISON); // one poison per worker
             }
-            pool.shutdown();
             // wait until all tasks are done
             @SuppressWarnings("unused")
             boolean ignored = pool.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
@@ -154,16 +159,11 @@ public class MigrationErrorInvestigator {
                 int mid = N / 2;
                 List<MigratableEntity> firstHalfRecords = records.subList(0, mid);
                 List<MigratableEntity> secondHalfRecords = records.subList(mid, N);
-                try {
-                    migrationRunner.runWithRecordIdIn(firstHalfRecords.stream().map(MigratableEntity::getMigratableId).collect(Collectors.toSet()));
-                } catch (RetriesExhaustedException ignored) {}
-
+                // TODO: Submit to a pool
+                migrationRunner.runWithRecordIdIn(firstHalfRecords.stream().map(MigratableEntity::getMigratableId).collect(Collectors.toSet()));
                 if (stopped.get()) break;
-                
-                try {
-                    migrationRunner.runWithRecordIdIn(secondHalfRecords.stream().map(MigratableEntity::getMigratableId).collect(Collectors.toSet()));
-                } catch (RetriesExhaustedException ignored) {}
-
+                // TODO: Submit to a pool
+                migrationRunner.runWithRecordIdIn(secondHalfRecords.stream().map(MigratableEntity::getMigratableId).collect(Collectors.toSet()));
             } else if (N == 0) {
                 continue;
             } else {
@@ -183,31 +183,29 @@ public class MigrationErrorInvestigator {
      * Load from migrationProgressManager
      */
     public void retryPreviouslyFailedRecords() {
-        Set<Object> failedRecordIds = migrationProgressManager.getCurrentlyFailedRecordIds(
+        List<MigratableEntity> failedRecords = migrationProgressManager.popFailedRecords(
             migrationRunner.getMigrationFQCN()
         );
-        List<MigratableEntity> failedRecords = failedRecordIds
-            .stream()
-            .map(id -> (MigratableEntity) new FailedMigratableEntity(id))
-            .toList();
+        if (failedRecords.isEmpty()) {
+            log.info("No previously failed records to retry from migration: " + migrationRunner.getMigrationFQCN());
+        } else {
+            log.info("Retrying " + failedRecords.size() + " previously failed records from migration: " + migrationRunner.getMigrationFQCN());
 
-        reportFailedRecords(
-            new FailedRecordGroup(
-                failedRecords,
-                migrationRunner,
-                migrationRunner.getRForEachRecordFrom().getForEachRecordFrom().inCaseOfError(),
-                new Exception("previously failed records (from restored migration progress)")
-            )
-        );
-    }
+            // TODO: Submit to a pool
+            migrationRunner.runWithRecordIdIn(
+                failedRecords.stream()
+                    .map(MigratableEntity::getMigratableId)
+                    .collect(Collectors.toSet())
+            );
 
-    @Getter
-    @AllArgsConstructor
-    public static class FailedMigratableEntity implements MigratableEntity {
-        private Object migratableId;
-
-        public String getMigratableDescription() {
-            return "<ID=" + migratableId + ">";
+            // reportFailedRecords(
+            //     new FailedRecordGroup(
+            //         failedRecords,
+            //         migrationRunner,
+            //         migrationRunner.getRForEachRecordFrom().getForEachRecordFrom().inCaseOfError(),
+            //         new Exception("previously failed records (from restored migration progress)")
+            //     )
+            // );
         }
     }
 
@@ -222,13 +220,18 @@ public class MigrationErrorInvestigator {
     }
 
     public void excludeSuccessfullyMigratedRecordIds(
-        String migrationFQCN,
         Set<Object> inputRecordIds
     ) {
         migrationProgressManager.excludeSuccessfullyMigratedRecordIds(
-            migrationFQCN,
+            migrationRunner.getMigrationFQCN(),
             inputRecordIds
         );
+    }
+
+    public void excludeIgnoredRecordIds(
+        Set<Object> inputRecordIds
+    ) {
+        inputRecordIds.removeAll(ignoredRecordIds);
     }
 
     public void restorePreviousProgress(MigrationProgress previousProgress) {
@@ -236,6 +239,10 @@ public class MigrationErrorInvestigator {
     }
 
     public void reportFailedRecords(FailedRecordGroup failedRecordGroup) {
+        if (failedRecordGroup.getRecords().size() == 0) {
+            log.warn("WILL NOT PROCESS: FailedRecordGroup.getRecords().size() == 0 ; " + failedRecordGroup.getMigrationRunner().getMigrationFQCN() + " ; " + failedRecordGroup.getException() + " ; " + failedRecordGroup.getErrorResolution());
+            return;
+        }
         numFailures.incrementAndGet();
         try {
             failedRecordGroupQueue.put(failedRecordGroup);

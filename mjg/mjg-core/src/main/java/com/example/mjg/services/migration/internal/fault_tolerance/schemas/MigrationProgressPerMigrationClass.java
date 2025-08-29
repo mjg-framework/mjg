@@ -3,7 +3,9 @@ package com.example.mjg.services.migration.internal.fault_tolerance.schemas;
 import lombok.*;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @AllArgsConstructor
@@ -16,9 +18,9 @@ public class MigrationProgressPerMigrationClass implements Serializable {
 
     private Set<Object> migratedRecordIds = new HashSet<>();
 
-    private Set<FailedRecord> failedRecords = new HashSet<>();
+    private List<FailedRecord> failedRecords = new ArrayList<>();
 
     public MigrationProgressPerMigrationClass(String fqcn) {
-        this(fqcn, new HashSet<Object>(), new HashSet<FailedRecord>());
+        this(fqcn, new HashSet<Object>(), new ArrayList<FailedRecord>());
     }
 }

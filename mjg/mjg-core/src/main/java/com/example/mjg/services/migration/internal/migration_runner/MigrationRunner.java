@@ -108,8 +108,6 @@ public class MigrationRunner {
         this.transformAndSaveRunner = new TransformAndSaveRunner(this);
 
         this.migrationErrorInvestigator = new MigrationErrorInvestigator(migrationProgressManager, this);
-        this.migrationErrorInvestigator.startInBackground();
-        this.migrationErrorInvestigator.retryPreviouslyFailedRecords();
     }
 
     private final DataStore<MigratableEntity, Object, Object> inputStore;
@@ -122,14 +120,22 @@ public class MigrationRunner {
 
     public void run()
     throws RetriesExhaustedException {
+        this.migrationErrorInvestigator.startInBackground();
+        this.migrationErrorInvestigator.retryPreviouslyFailedRecords();
+        
         DataStore<MigratableEntity, Object, Object> inputStore = getDataStore(
             rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
         );
         runInternal(inputStore, Map.of());
+
+        migrationErrorInvestigator.join();
+        final int numFailures = migrationErrorInvestigator.getNumFailures();
+        if (numFailures > 0) {
+            throw new RetriesExhaustedException(migrationFQCN + " experienced at least " + numFailures + " failures");
+        }
     }
 
-    public void runWithRecordIdIn(Set<Object> recordIds)
-    throws RetriesExhaustedException {
+    public void runWithRecordIdIn(Set<Object> recordIds) {
         runInternal(
             inputStore,
             inputStore.getFiltersByIdIn(recordIds)
@@ -139,70 +145,72 @@ public class MigrationRunner {
     private void runInternal(
         DataStore<MigratableEntity, Object, Object> inputStore,
         Map<Object, Object> filters
-    ) throws RetriesExhaustedException {
+    ) {
+        final int INPUT_BATCH_SIZE = rForEachRecordFrom.getForEachRecordFrom().batchSize();
+
+        RetryLogic retryLogic = RetryLogic
+            .maxRetries(rForEachRecordFrom.getForEachRecordFrom().inCaseOfError().retryTimes())
+            .retryDelayInSeconds(rForEachRecordFrom.getForEachRecordFrom().inCaseOfError().retryDelayInSeconds())
+            .exceptionReporter(
+                (e, arg) -> migrationErrorInvestigator.reportFatalError(e)
+            )
+            .debugContext(
+                "While reading records from store: " + rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
+                + "\nwith filters: " + filters
+            );
+
+        var getFirstPageOfRecordsWithFilter = retryLogic.withCallback(
+            (Object ignoredArg) -> inputStore.getFirstPageOfRecordsWithFilter(
+                filters,
+                INPUT_BATCH_SIZE
+            )
+        );
+        var getNextPageOfRecordsAfter = retryLogic.withCallback(
+            inputStore::getNextPageOfRecordsAfter
+        );
+
+        DataPage<MigratableEntity, Object, Object> inputPage;
         try {
-            final int INPUT_BATCH_SIZE = rForEachRecordFrom.getForEachRecordFrom().batchSize();
-
-            RetryLogic retryLogic = RetryLogic
-                .maxRetries(rForEachRecordFrom.getForEachRecordFrom().inCaseOfError().retryTimes())
-                .retryDelayInSeconds(rForEachRecordFrom.getForEachRecordFrom().inCaseOfError().retryDelayInSeconds())
-                .exceptionReporter(
-                    (e, arg) -> migrationErrorInvestigator.reportFatalError(e)
-                )
-                .debugContext(
-                    "While reading records from store: " + rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
-                    + "\nwith filters: " + filters
-                );
-
-            var getFirstPageOfRecordsWithFilter = retryLogic.withCallback(
-                (Object ignoredArg) -> inputStore.getFirstPageOfRecordsWithFilter(
-                    filters,
-                    INPUT_BATCH_SIZE
-                )
-            );
-            var getNextPageOfRecordsAfter = retryLogic.withCallback(
-                inputStore::getNextPageOfRecordsAfter
-            );
-
-            DataPage<MigratableEntity, Object, Object> inputPage = getFirstPageOfRecordsWithFilter
+            inputPage = getFirstPageOfRecordsWithFilter
                 .apply(null);
+        } catch (RetriesExhaustedException e) {
+            return;
+        }
 
-            while (inputPage.getSize() > 0) {
-                // Filter out those that are already migrated
-                List<MigratableEntity> originalRecords = inputPage.getRecords();
+        while (inputPage.getSize() > 0) {
+            List<MigratableEntity> originalRecords = inputPage.getRecords();
 
-                Set<Object> inputRecordIds = originalRecords
-                    .stream()
-                    .map(MigratableEntity::getMigratableId)
-                    .collect(Collectors.toCollection(HashSet::new));
+            Set<Object> inputRecordIds = originalRecords
+                .stream()
+                .map(MigratableEntity::getMigratableId)
+                .collect(Collectors.toCollection(HashSet::new));
 
-                migrationErrorInvestigator.excludeSuccessfullyMigratedRecordIds(
-                    this.migrationFQCN,
-                    inputRecordIds
-                );
-
-                List<MigratableEntity> recordsToMigrate = originalRecords
-                    .stream()
-                    .filter(record -> inputRecordIds.contains(record.getMigratableId()))
-                    .toList();
-                // Process
-                migrateRecords(recordsToMigrate);
-                // Next page
-                inputPage = getNextPageOfRecordsAfter.apply(inputPage);
+            {
+                // Filter out those that are already migrated, and those that are ignored
+                migrationErrorInvestigator.excludeSuccessfullyMigratedRecordIds(inputRecordIds);
+                migrationErrorInvestigator.excludeIgnoredRecordIds(inputRecordIds);
             }
-        } catch (RetriesExhaustedException ignored) {
-        } finally {
-            // Wait for all retry jobs to complete
-            migrationErrorInvestigator.join();
-            final int numFailures = migrationErrorInvestigator.getNumFailures();
-            if (numFailures > 0) {
-                throw new RetriesExhaustedException(migrationFQCN + " experienced at least " + numFailures);
+
+            List<MigratableEntity> recordsToMigrate = originalRecords
+                .stream()
+                .filter(record -> inputRecordIds.contains(record.getMigratableId()))
+                .toList();
+            
+            // Process
+            if (recordsToMigrate.size() > 0) {
+                migrateRecords(recordsToMigrate);
+            }
+            
+            // Next page
+            try {
+                inputPage = getNextPageOfRecordsAfter.apply(inputPage);
+            } catch (RetriesExhaustedException e) {
+                return;
             }
         }
     }
 
-    private void migrateRecords(List<MigratableEntity> inputRecords)
-    throws RetriesExhaustedException {
+    private void migrateRecords(List<MigratableEntity> inputRecords) {
         boolean anyFailed = false;
         AtomicBoolean anyFailedMidOperation = new AtomicBoolean(false);
 

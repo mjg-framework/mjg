@@ -30,14 +30,13 @@ public class MatchAndReduceRunner {
     private final MigrationRunner migrationRunner;
 
     public List<RecordProcessingContext>
-    run(AtomicBoolean anyFailed, List<MigratableEntity> inputRecords)
-    throws RetriesExhaustedException {
+    run(AtomicBoolean anyFailed, List<MigratableEntity> inputRecords) {
         List<RecordProcessingContext> inputContexts = startReduction(anyFailed, inputRecords);
 
         List<RMatchWith> rMatchWiths = migrationRunner.getRMatchWiths();
         // TODO: Probably should not use parallelStream() here,
-        // TODO: since several matching in parallel could eat
-        // TODO: up too much memory.
+        // TODO: since several simultaneous matching operations
+        // TODO: could eat up too much memory.
         for (RMatchWith rMatchWith : rMatchWiths) {
             matchAndReduceRecordsPerMatching(anyFailed, rMatchWith, inputContexts, inputRecords);
         }
@@ -98,7 +97,7 @@ public class MatchAndReduceRunner {
         RMatchWith rMatchWith,
         List<RecordProcessingContext> recordContexts,
         List<MigratableEntity> inputRecords
-    ) throws RetriesExhaustedException {
+    ) {
         DataStoreRegistry storeRegistry = migrationRunner.getStoreRegistry();
         RMigrationUtils rMigrationUtils = migrationRunner.getRMigrationUtils();
         String migrationFQCN = migrationRunner.getMigrationFQCN();
@@ -147,7 +146,7 @@ public class MatchAndReduceRunner {
 
         // Group records by matching filter sets
         Map<Map<Object, Object>, List<RecordProcessingContext>> recordContextsByFiltersMap = new ConcurrentHashMap<>();
-        // TODO: Parallel stream here could improve speed.
+        // TODO: parallelStream here could improve speed.
         recordContexts.forEach(recordContext -> {
             try {
                 Map<Object, Object> filterSet = callMatchingMethod.apply(recordContext.getRecord());
@@ -182,7 +181,7 @@ public class MatchAndReduceRunner {
                             numMatchingRecords, moreMatchingRecords
                         );
 
-                        // TODO: Parallel streaming here might improve speed,
+                        // TODO: parallelStream() here might improve speed,
                         // TODO: but ctx.getAggregates() is being mutated, so...
                         for (RecordProcessingContext ctx : inputRecordContexts) {
                             rMigrationUtils.callReduceMethod(rMatchWith, ctx.getAggregates(), moreMatchingRecords);

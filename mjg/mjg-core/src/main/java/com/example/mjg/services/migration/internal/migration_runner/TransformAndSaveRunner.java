@@ -179,6 +179,6 @@ class TransformAndSaveRunner {
                 endPos = Math.min(endPos + BATCH_SIZE, outputRecords.size());
             }
         });
-        // TODO: A parallel stream here won't do any good I guess
+        // TODO: A parallelStream here won't do any good I guess
     }
 }

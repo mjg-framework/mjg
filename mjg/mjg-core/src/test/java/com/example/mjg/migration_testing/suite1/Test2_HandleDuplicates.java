@@ -1,20 +1,7 @@
 package com.example.mjg.migration_testing.suite1;
 
-import com.example.mjg.data.MigratableEntity;
-import com.example.mjg.migration_testing.suite1.data.entities.IndicatorEntity;
-import com.example.mjg.migration_testing.suite1.data.entities.MeasurementResultEntity;
-import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
-import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity;
-import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity2;
-import com.example.mjg.migration_testing.suite1.data.mocking.common.MockDataLoader;
-import com.example.mjg.migration_testing.suite1.data.stores.*;
-import com.example.mjg.services.migration.MigrationService;
-import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
-import com.example.mjg.utils.ObjectMapperFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -24,15 +11,35 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
-public class TestMigrations1 {
+import com.example.mjg.data.MigratableEntity;
+import com.example.mjg.migration_testing.suite1.data.entities.IndicatorEntity;
+import com.example.mjg.migration_testing.suite1.data.entities.MeasurementResultEntity;
+import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
+import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity;
+import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity2;
+import com.example.mjg.migration_testing.suite1.data.mocking.common.MockDataLoader;
+import com.example.mjg.migration_testing.suite1.data.stores.IndicatorStore;
+import com.example.mjg.migration_testing.suite1.data.stores.MeasurementResultStore;
+import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore;
+import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore2;
+import com.example.mjg.migration_testing.suite1.data.stores.StationStore;
+import com.example.mjg.migration_testing.suite1.data.stores.StationStore2;
+import com.example.mjg.migration_testing.suite1.migrations.M1_PopulatePivotTable_StationIndicators;
+import com.example.mjg.services.migration.MigrationService;
+import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
+import com.example.mjg.utils.ObjectMapperFactory;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+public class Test2_HandleDuplicates {
     private static final List<IndicatorEntity> INITIAL_INDICATORS = List.of(
         new IndicatorEntity(1, "INDICATOR_1", "pH"),
         new IndicatorEntity(2, "INDICATOR_2", "TSS"),
@@ -79,8 +86,18 @@ public class TestMigrations1 {
         new StationIndicatorEntity("STATION_3,INDICATOR_5", "STATION_3", 3, "INDICATOR_5", 5)
     );
 
+
     @BeforeAll
     public static void setup() {
+        AtomicInteger numTimesHandleDuplicateCalled = (
+            (M1_PopulatePivotTable_StationIndicators) MigrationService.getInst()
+                .getMigrationRegistry().get(
+                    M1_PopulatePivotTable_StationIndicators.class.getCanonicalName()
+                )
+        ).getNumTimesHandleDuplicateCalled();
+
+        numTimesHandleDuplicateCalled.set(0);
+
         MockDataLoader.load(
             IndicatorStore.class,
             INITIAL_INDICATORS
@@ -99,7 +116,6 @@ public class TestMigrations1 {
         MockDataLoader.reset(StationIndicatorStore.class);
         MockDataLoader.reset(StationIndicatorStore2.class);
         MockDataLoader.reset(StationStore2.class);
-
 
         BiConsumer<MigrationProgress, String> saveMigrationProgressToFile = (
             migrationProgress, filePath
@@ -129,34 +145,66 @@ public class TestMigrations1 {
             }
         };
 
+        // First run
         MigrationService.getInst().addProgressPersistenceCallback(
             migrationProgress -> {
                 saveMigrationProgressToFile.accept(
                     migrationProgress,
-                    "migration-progress-test-1.json"
+                    "migration-progress-test-2-run-1.json"
                 );
             }
         );
-        MigrationService.getInst().runWithoutPreviousProgress();
-    }
-
-    @Test
-    public void testSourceDataStoresAreIntactAfterMigration() {
-        assertEquals(
-            INITIAL_INDICATORS,
-            MockDataLoader.getStore(IndicatorStore.class).getRecords()
-        );
-
+        MigrationService.getInst().run(new MigrationProgress());
         assertEquals(
             INITIAL_STATIONS,
             MockDataLoader.getStore(StationStore.class).getRecords()
         );
 
-        assertEquals(
-            INITIAL_MEASUREMENT_RESULTS,
-            MockDataLoader.getStore(MeasurementResultStore.class).getRecords()
+        // Rerun to see how it skips migrated records from previous run
+        MigrationService.getInst().removeAllProgressPersistenceCallbacks();
+        MigrationService.getInst().addProgressPersistenceCallback(
+            migrationProgress -> {
+                saveMigrationProgressToFile.accept(
+                    migrationProgress,
+                    "migration-progress-test-2-run-2.json"
+                );
+            }
+        );
+
+        MigrationService.getInst().runWithPreviousProgress();
+
+        // Rerun to see how it handles duplicates
+        MigrationService.getInst().removeAllProgressPersistenceCallbacks();
+        MigrationService.getInst().addProgressPersistenceCallback(
+            migrationProgress -> {
+                saveMigrationProgressToFile.accept(
+                    migrationProgress,
+                    "migration-progress-test-2-run-3.json"
+                );
+            }
+        );
+
+        MigrationService.getInst().runWithoutPreviousProgress();
+    }
+
+    @Test
+    public void testHandleDuplicateCalled() {
+        AtomicInteger numTimesHandleDuplicateCalled = (
+            (M1_PopulatePivotTable_StationIndicators) MigrationService.getInst()
+                .getMigrationRegistry().get(
+                    M1_PopulatePivotTable_StationIndicators.class.getCanonicalName()
+                )
+        ).getNumTimesHandleDuplicateCalled();
+
+        assertTrue(
+            numTimesHandleDuplicateCalled.get() > 0,
+            "Expecting: " + numTimesHandleDuplicateCalled.get() + " > 0"
         );
     }
+
+    ///////////////////////////////////
+    /////// COPIED FROM Test1 /////////
+    ///////////////////////////////////
 
     @Test
     public void testDataMigrated_M1() {
@@ -218,4 +266,3 @@ public class TestMigrations1 {
         assertEquals("new code STATION_2", codeToRecordMap.get("new code STATION_2,INDICATOR_4").getStationCode());
     }
 }
-// TODO: Duplicate resolution, fault tolerance (in another test)

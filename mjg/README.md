@@ -133,11 +133,7 @@ type MigrationProgress_ObjectSchema = {
                 "id": string | number /* int, long */,
                 "description": string,
                 "cause": string,
-                "action": "IGNORE"
-                    | "RETRY"
-                    | "TAKE(0)" | "TAKE(1)" | "TAKE(N-2)" | "TAKE(N-1)" /*
-                        | ... TAKE(x) or TAKE(N - x) with x being a natural number
-                    */,
+                "action": "IGNORE" | "RETRY",
                 "timestamp": string,
             }>,
         },
@@ -178,27 +174,6 @@ case, fix your code, leave the action to
 be `RETRY`, and simply rerun the migration
 with the altered migration progress JSON
 data.
-
-In case the cause is a cardinality violation
-when the required cardinality is `EXACTLY_ONE`
-or `ZERO_OR_ONE`, but there are more than one
-matched/transformed records, you could also
-specify the action to be one of those
-`TAKE(...)` actions, which picks one
-record to satisfy the cardinality requirement.
-
-Meanwhile, if `ONE_OR_MORE` cardinality
-requirement is violated, that means there are
-absolutely zero matched/transformed records,
-so there is no way you could "take" any record
-to compromise, so those `TAKE(...)` actions
-do not apply here and, if specified, will be
-considered invalid and another error will be
-thrown.
-
-`ZERO_OR_MORE` cardinality never fails for
-any number of matched/transformed records, so
-`TAKE(...)` actions do not apply either.
 
 ## Duplicate Error Handling
 
