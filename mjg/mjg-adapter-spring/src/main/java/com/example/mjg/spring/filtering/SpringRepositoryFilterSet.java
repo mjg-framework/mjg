@@ -8,10 +8,8 @@ import com.example.mjg.spring.exceptions.InvalidRepositoryMethodException;
 import com.example.mjg.spring.repositories.MigratableSpringRepository;
 import com.example.mjg.spring.stores.SpringRepositoryStore;
 import com.example.mjg.utils.ReflectionUtils;
-import com.example.mjg.utils.functional.interfaces.Function2;
-import com.example.mjg.utils.functional.interfaces.Function3;
-import com.example.mjg.utils.functional.interfaces.Function4;
-import com.example.mjg.utils.functional.interfaces.Function5;
+import com.example.mjg.utils.functional.interfaces.*;
+
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -143,5 +141,155 @@ public class SpringRepositoryFilterSet<
         );
     }
 
-    // TODO: Function 6 through 16
+    public static <
+        T extends MigratableEntity,
+        ID extends Serializable,
+        REPO extends MigratableSpringRepository<T, ID>,
+        A, B, C, D
+    >
+    SpringRepositoryFilterSet<T, ID> of(Function6<REPO, A, B, C, D, Pageable, Page<T>> lambda, A a, B b, C c, D d) {
+        return new SpringRepositoryFilterSet<>(
+            ReflectionUtils.extractMemberMethodFromLambda(lambda),
+            List.of(a, b, c, d)
+        );
+    }
+
+    public static <
+        T extends MigratableEntity,
+        ID extends Serializable,
+        REPO extends MigratableSpringRepository<T, ID>,
+        A, B, C, D, E
+    >
+    SpringRepositoryFilterSet<T, ID> of(Function7<REPO, A, B, C, D, E, Pageable, Page<T>> lambda, A a, B b, C c, D d, E e) {
+        return new SpringRepositoryFilterSet<>(
+            ReflectionUtils.extractMemberMethodFromLambda(lambda),
+            List.of(a, b, c, d, e)
+        );
+    }
+
+    public static <
+        T extends MigratableEntity,
+        ID extends Serializable,
+        REPO extends MigratableSpringRepository<T, ID>,
+        A, B, C, D, E, F
+    >
+    SpringRepositoryFilterSet<T, ID> of(Function8<REPO, A, B, C, D, E, F, Pageable, Page<T>> lambda,
+                                        A a, B b, C c, D d, E e, F f) {
+        return new SpringRepositoryFilterSet<>(
+            ReflectionUtils.extractMemberMethodFromLambda(lambda),
+            List.of(a, b, c, d, e, f)
+        );
+    }
+
+    public static <
+        T extends MigratableEntity,
+        ID extends Serializable,
+        REPO extends MigratableSpringRepository<T, ID>,
+        A, B, C, D, E, F, G
+    >
+    SpringRepositoryFilterSet<T, ID> of(Function9<REPO, A, B, C, D, E, F, G, Pageable, Page<T>> lambda,
+                                        A a, B b, C c, D d, E e, F f, G g) {
+        return new SpringRepositoryFilterSet<>(
+            ReflectionUtils.extractMemberMethodFromLambda(lambda),
+            List.of(a, b, c, d, e, f, g)
+        );
+    }
+
+    public static <
+        T extends MigratableEntity,
+        ID extends Serializable,
+        REPO extends MigratableSpringRepository<T, ID>,
+        A, B, C, D, E, F, G, H
+    >
+    SpringRepositoryFilterSet<T, ID> of(Function10<REPO, A, B, C, D, E, F, G, H, Pageable, Page<T>> lambda,
+                                        A a, B b, C c, D d, E e, F f, G g, H h) {
+        return new SpringRepositoryFilterSet<>(
+            ReflectionUtils.extractMemberMethodFromLambda(lambda),
+            List.of(a, b, c, d, e, f, g, h)
+        );
+    }
+
+    public static <
+        T extends MigratableEntity,
+        ID extends Serializable,
+        REPO extends MigratableSpringRepository<T, ID>,
+        A, B, C, D, E, F, G, H, I
+    >
+    SpringRepositoryFilterSet<T, ID> of(Function11<REPO, A, B, C, D, E, F, G, H, I, Pageable, Page<T>> lambda,
+                                        A a, B b, C c, D d, E e, F f, G g, H h, I i) {
+        return new SpringRepositoryFilterSet<>(
+            ReflectionUtils.extractMemberMethodFromLambda(lambda),
+            List.of(a, b, c, d, e, f, g, h, i)
+        );
+    }
+
+    public static <
+        T extends MigratableEntity,
+        ID extends Serializable,
+        REPO extends MigratableSpringRepository<T, ID>,
+        A, B, C, D, E, F, G, H, I, J
+    >
+    SpringRepositoryFilterSet<T, ID> of(Function12<REPO, A, B, C, D, E, F, G, H, I, J, Pageable, Page<T>> lambda,
+                                        A a, B b, C c, D d, E e, F f, G g, H h, I i, J j) {
+        return new SpringRepositoryFilterSet<>(
+            ReflectionUtils.extractMemberMethodFromLambda(lambda),
+            List.of(a, b, c, d, e, f, g, h, i, j)
+        );
+    }
+
+    public static <
+        T extends MigratableEntity,
+        ID extends Serializable,
+        REPO extends MigratableSpringRepository<T, ID>,
+        A, B, C, D, E, F, G, H, I, J, K
+    >
+    SpringRepositoryFilterSet<T, ID> of(Function13<REPO, A, B, C, D, E, F, G, H, I, J, K, Pageable, Page<T>> lambda,
+                                        A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k) {
+        return new SpringRepositoryFilterSet<>(
+            ReflectionUtils.extractMemberMethodFromLambda(lambda),
+            List.of(a, b, c, d, e, f, g, h, i, j, k)
+        );
+    }
+
+    public static <
+        T extends MigratableEntity,
+        ID extends Serializable,
+        REPO extends MigratableSpringRepository<T, ID>,
+        A, B, C, D, E, F, G, H, I, J, K, L
+    >
+    SpringRepositoryFilterSet<T, ID> of(Function14<REPO, A, B, C, D, E, F, G, H, I, J, K, L, Pageable, Page<T>> lambda,
+                                        A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l) {
+        return new SpringRepositoryFilterSet<>(
+            ReflectionUtils.extractMemberMethodFromLambda(lambda),
+            List.of(a, b, c, d, e, f, g, h, i, j, k, l)
+        );
+    }
+
+    public static <
+        T extends MigratableEntity,
+        ID extends Serializable,
+        REPO extends MigratableSpringRepository<T, ID>,
+        A, B, C, D, E, F, G, H, I, J, K, L, M
+    >
+    SpringRepositoryFilterSet<T, ID> of(Function15<REPO, A, B, C, D, E, F, G, H, I, J, K, L, M, Pageable, Page<T>> lambda,
+                                        A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m) {
+        return new SpringRepositoryFilterSet<>(
+            ReflectionUtils.extractMemberMethodFromLambda(lambda),
+            List.of(a, b, c, d, e, f, g, h, i, j, k, l, m)
+        );
+    }
+
+    public static <
+        T extends MigratableEntity,
+        ID extends Serializable,
+        REPO extends MigratableSpringRepository<T, ID>,
+        A, B, C, D, E, F, G, H, I, J, K, L, M, N
+    >
+    SpringRepositoryFilterSet<T, ID> of(Function16<REPO, A, B, C, D, E, F, G, H, I, J, K, L, M, N, Pageable, Page<T>> lambda,
+                                        A a, B b, C c, D d, E e, F f, G g, H h, I i, J j, K k, L l, M m, N n) {
+        return new SpringRepositoryFilterSet<>(
+            ReflectionUtils.extractMemberMethodFromLambda(lambda),
+            List.of(a, b, c, d, e, f, g, h, i, j, k, l, m, n)
+        );
+    }
 }

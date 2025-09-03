@@ -218,4 +218,3 @@ public class Test1_DataMigratedProperlyInOneRun {
         assertEquals("new code STATION_2", codeToRecordMap.get("new code STATION_2,INDICATOR_4").getStationCode());
     }
 }
-// TODO: Duplicate resolution, fault tolerance (in another test)
