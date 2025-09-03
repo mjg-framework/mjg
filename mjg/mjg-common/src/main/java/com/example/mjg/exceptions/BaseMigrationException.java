@@ -8,4 +8,8 @@ public class BaseMigrationException extends Exception {
     public BaseMigrationException(String message, Throwable cause) {
         super(message, cause);
     }
+
+    public BaseMigrationException(Throwable cause) {
+        super(cause);
+    }
 }

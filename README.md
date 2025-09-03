@@ -8,24 +8,32 @@ Connects to two MongoDB databases at once and migrates collections while generat
 - MongoDB
 
 ## Configure
+
 Edit `src/main/resources/application.yml`:
 
 ```yaml
 data:
   mongodb:
     source:
-      uri: mongodb://localhost:27017
-      database: sourceDB
-    target:
-      uri: mongodb://localhost:27017
-      database: targetDB
+      uri: mongodb://localhost:27017/eos
+    dest:
+      uri: mongodb://localhost:27017/eos_metadata_target
 ```
 
-## Build & Run
-```bash
+## Build
+
+```sh
+mvn clean compile test-compile test package
+```
+
+Or if you prefer to not run tests:
+
+```sh
 mvn -DskipTests clean compile test-compile package
+```
+
+## Run
+
+```sh
 java -jar mongo_migrate_multids/target/mongo_migrate_multids-0.0.1-SNAPSHOT.jar
 ```
-
-By default, `MigrateRunner` migrates the `users` collection using `MigrationService`.
-Update `MigrateRunner` or create your own runner/service to select collections and logic.

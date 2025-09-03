@@ -5,6 +5,7 @@ import com.example.mjg.annotations.MatchWith;
 import com.example.mjg.annotations.Migration;
 import com.example.mjg.annotations.TransformAndSaveTo;
 import com.example.mjg.config.Cardinality;
+import com.example.mjg.exceptions.DuplicateDataException;
 import com.example.mjg.migration_testing.suite1.data.entities.MeasurementResultEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity;
@@ -114,6 +115,7 @@ public class M3_Migrate_StationIndicator2 {
     }
 
     public List<StationIndicatorEntity2> handleDuplicate(
+        DuplicateDataException exception,
         StationIndicatorEntity inputRecord,
         List<StationIndicatorEntity2> outputRecords,
         StationIndicatorStore stationIndicatorStore,

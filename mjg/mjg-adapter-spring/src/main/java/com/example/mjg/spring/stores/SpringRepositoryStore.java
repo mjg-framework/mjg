@@ -3,8 +3,11 @@ package com.example.mjg.spring.stores;
 import com.example.mjg.data.DataPage;
 import com.example.mjg.data.DataStore;
 import com.example.mjg.data.MigratableEntity;
+import com.example.mjg.exceptions.DuplicateDataException;
 import com.example.mjg.spring.filtering.SpringRepositoryFilterSet;
 import com.example.mjg.spring.repositories.MigratableSpringRepository;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 
 import java.io.Serializable;
@@ -47,11 +50,21 @@ extends DataStore<T, ID, SpringRepositoryFilterSet<T, ID>>
 
     @Override
     protected void doSave(T record) throws Exception {
-        getRepository().save(record);
+        try {
+            getRepository().save(record);
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateDataException(e);
+        }
     }
 
     @Override
     protected void doSaveAll(List<T> records) throws Exception {
-        getRepository().saveAll(records);
+        if (records.isEmpty()) return;
+
+        try {
+            getRepository().saveAll(records);
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateDataException(e);
+        }
     }
 }

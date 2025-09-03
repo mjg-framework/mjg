@@ -32,6 +32,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+            <version>${project.dependencies.spring-tx.provided.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- DEPENDENCIES FOR TESTING -->
 
         <dependency>

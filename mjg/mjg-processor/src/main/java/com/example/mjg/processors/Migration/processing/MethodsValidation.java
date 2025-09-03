@@ -1,5 +1,6 @@
 package com.example.mjg.processors.Migration.processing;
 
+import com.example.mjg.exceptions.DuplicateDataException;
 import com.example.mjg.processors.ComptimeUtils;
 import com.example.mjg.processors.MethodPrototype;
 import com.example.mjg.processors.Migration.ComptimeMigration;
@@ -231,6 +232,7 @@ public class MethodsValidation {
     private List<MethodPrototype> getDuplicateResolutionMethodPrototypes() {
         /*
         public List<B> handleDuplicate(
+            DuplicateDataException e,
             A inputRecord,
             List<B> outputRecords, // records you returned from .transform()
             AStore inputDataStore,
@@ -253,6 +255,7 @@ public class MethodsValidation {
                 "handleDuplicate",
 
                 List.of(
+                    elementUtils.getTypeElement(DuplicateDataException.class.getCanonicalName()).asType(),
                     inputEntityType,
                     typeListOutputRecords,
                     srcStoreType,

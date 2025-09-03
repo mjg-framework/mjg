@@ -8,6 +8,7 @@ import com.example.mjg.annotations.Migration;
 import com.example.mjg.annotations.TransformAndSaveTo;
 import com.example.mjg.config.Cardinality;
 import com.example.mjg.config.ErrorResolution;
+import com.example.mjg.exceptions.DuplicateDataException;
 import com.example.mjg.storage.DataStoreRegistry;
 import com.example.mongo_migrate_multids.entity.AreaEntity;
 import com.example.mongo_migrate_multids.migrational.datastores.dest.DestAreaStore;
@@ -39,6 +40,7 @@ public class MigrateAreasToTW {
     }
 
     public List<AreaEntity> handleDuplicate(
+        DuplicateDataException exception,
         AreaEntity inputRecord,
         List<AreaEntity> outputRecords,
         SrcAreaStore srcAreaStore,

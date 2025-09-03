@@ -4,6 +4,7 @@ import com.example.mjg.annotations.ForEachRecordFrom;
 import com.example.mjg.annotations.Migration;
 import com.example.mjg.annotations.TransformAndSaveTo;
 import com.example.mjg.config.Cardinality;
+import com.example.mjg.exceptions.DuplicateDataException;
 import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore2;
@@ -37,6 +38,7 @@ public class M2_Migrate_Data_From_StationStore_To_StationStore2 {
     }
 
     public List<StationEntity> handleDuplicate(
+        DuplicateDataException exception,
         StationEntity inputRecord,
         List<StationEntity> outputRecords,
         StationStore stationStore,

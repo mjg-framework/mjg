@@ -9,7 +9,15 @@ package com.example.mjg.exceptions;
  * setting.
  */
 public class DuplicateDataException extends BaseMigrationException {
-  public DuplicateDataException(String message) {
-    super(message);
-  }
+    public DuplicateDataException(String message) {
+        super(message);
+    }
+
+    public DuplicateDataException(Throwable cause) {
+        super(cause);
+    }
+
+    public DuplicateDataException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

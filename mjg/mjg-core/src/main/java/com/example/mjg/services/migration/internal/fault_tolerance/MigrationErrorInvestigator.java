@@ -1,7 +1,6 @@
 package com.example.mjg.services.migration.internal.fault_tolerance;
 
 import com.example.mjg.data.MigratableEntity;
-import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
 import com.example.mjg.services.migration.internal.migration_runner.MigrationRunner;
 
 import lombok.extern.slf4j.Slf4j;

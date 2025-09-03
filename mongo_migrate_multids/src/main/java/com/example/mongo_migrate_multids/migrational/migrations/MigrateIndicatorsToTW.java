@@ -5,6 +5,7 @@ import com.example.mjg.annotations.Migration;
 import com.example.mjg.annotations.TransformAndSaveTo;
 import com.example.mjg.config.Cardinality;
 import com.example.mjg.config.ErrorResolution;
+import com.example.mjg.exceptions.DuplicateDataException;
 import com.example.mjg.storage.DataStoreRegistry;
 import com.example.mongo_migrate_multids.entity.IndicatorEntity;
 import com.example.mongo_migrate_multids.migrational.datastores.dest.DestIndicatorStore;
@@ -40,6 +41,7 @@ public class MigrateIndicatorsToTW {
     }
 
     public List<IndicatorEntity> handleDuplicate(
+        DuplicateDataException exception,
         IndicatorEntity inputRecord,
         List<IndicatorEntity> outputRecords,
         SrcIndicatorStore src,

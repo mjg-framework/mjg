@@ -26,6 +26,7 @@
         <project.dependencies.spring-data-commons.provided.version>3.5.3</project.dependencies.spring-data-commons.provided.version>
         <project.dependencies.spring-data-mongodb.provided.version>4.5.3</project.dependencies.spring-data-mongodb.provided.version>
         <project.dependencies.spring-context.provided.version>6.1.14</project.dependencies.spring-context.provided.version>
+        <project.dependencies.spring-tx.provided.version>6.2.10</project.dependencies.spring-tx.provided.version>
         <project.dependencies.asm.version>9.8</project.dependencies.asm.version>
     </properties>
     

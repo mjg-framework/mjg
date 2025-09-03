@@ -10,6 +10,7 @@ import java.util.Map;
 import com.example.mjg.data.DataFilterSet;
 import com.example.mjg.data.DataStore;
 import com.example.mjg.data.MigratableEntity;
+import com.example.mjg.exceptions.DuplicateDataException;
 import com.example.mjg.storage.DataStoreRegistry;
 import com.example.mjg.utils.RMethodSignature;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +24,7 @@ public class RMigrationUtils {
     private final Object migrationInstance;
 
     private final RForEachRecordFrom rForEachRecordFrom;
-    private final List<RMatchWith> rMatchWiths;
+    // private final List<RMatchWith> rMatchWiths;
     private final RTransformAndSaveTo rTransformAndSaveTo;
 
     public RMigrationUtils(
@@ -38,7 +39,7 @@ public class RMigrationUtils {
         this.migrationClass = migrationClass;
         this.migrationInstance = migrationInstance;
         this.rForEachRecordFrom = rForEachRecordFrom;
-        this.rMatchWiths = rMatchWiths;
+        // this.rMatchWiths = rMatchWiths;
         this.rTransformAndSaveTo = rTransformAndSaveTo;
     }
 
@@ -203,6 +204,7 @@ public class RMigrationUtils {
     }
 
     public List<MigratableEntity> callHandleDuplicateMethod(
+        DuplicateDataException exception,
         MigratableEntity inputRecord,
         List<MigratableEntity> outputRecordsFromTransform
     ) throws Exception {
@@ -228,6 +230,7 @@ public class RMigrationUtils {
                     new RMethodSignature(
                         methodName,
                         List.of(
+                            DuplicateDataException.class,
                             rForEachRecordFrom.getDataStoreReflection().getEntityClass(),
                             List.class,
                             rForEachRecordFrom.getDataStoreReflection().getStoreClass(),
@@ -244,6 +247,7 @@ public class RMigrationUtils {
             Object resolvedRecordsRaw = invokeMethod(
                 method,
 
+                exception,
                 inputRecord,
                 outputRecordsFromTransform,
                 inputDataStoreInstance,

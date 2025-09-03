@@ -346,7 +346,7 @@ process could continue or stop.
 All implemented `DataStore` methods must be
 thread-safe.
 
-Implementations of `DataStore::saveAll()` are
+Implementations of `DataStore::doSaveAll()` are
 assumed to have **transaction-like behavior**,
 i.e., either all given records are successfully
 saved, or none at all - in case of error.

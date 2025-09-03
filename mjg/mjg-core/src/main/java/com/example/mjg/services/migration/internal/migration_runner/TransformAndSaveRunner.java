@@ -121,6 +121,7 @@ class TransformAndSaveRunner {
                     List<MigratableEntity> newOutputRecords = migrationRunner
                         .getRMigrationUtils()
                         .callHandleDuplicateMethod(
+                            e,
                             ctx.getInputRecord(),
                             ctx.getOutputRecords()
                         );
@@ -158,7 +159,7 @@ class TransformAndSaveRunner {
 
                 int beginPos = 0;
                 int endPos = Math.min(BATCH_SIZE, outputRecords.size());
-                boolean failedOnce = false;
+                boolean failed = false;
 
                 while (endPos <= outputRecords.size()) {
                     if (beginPos >= endPos) break;
@@ -170,13 +171,13 @@ class TransformAndSaveRunner {
                     try {
                         fromOutputContext_SaveAndResolveDuplicatesIfAny.apply(subCtx);
                     } catch (RetriesExhaustedException ignored) {
-                        failedOnce = true;
+                        failed = true;
                     }
                     beginPos = endPos;
                     endPos = Math.min(endPos + BATCH_SIZE, outputRecords.size());
                 }
 
-                if (!failedOnce) {
+                if (!failed) {
                     successfullyMigratedInputRecordIds.add(
                         outputContext.getInputRecord().getMigratableId()
                     );

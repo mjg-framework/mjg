@@ -6,6 +6,7 @@ import com.example.mjg.annotations.Migration;
 import com.example.mjg.annotations.TransformAndSaveTo;
 import com.example.mjg.config.Cardinality;
 import com.example.mjg.config.ErrorResolution;
+import com.example.mjg.exceptions.DuplicateDataException;
 import com.example.mjg.migration_testing.suite1.data.entities.IndicatorEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity;
@@ -119,6 +120,7 @@ public class M1_PopulatePivotTable_StationIndicators {
     @Getter
     private final AtomicInteger numTimesHandleDuplicateCalled = new AtomicInteger(0);
     public List<StationIndicatorEntity> handleDuplicate(
+        DuplicateDataException exception,
         StationEntity inputRecord,
         List<StationIndicatorEntity> outputRecords,
         StationStore stationStore,
