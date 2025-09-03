@@ -1,7 +1,9 @@
 package com.example.mjg.data;
 
+import java.io.Serializable;
+
 public interface MigratableEntity {
-    Object getMigratableId();
+    Serializable getMigratableId();
 
     /**
      *

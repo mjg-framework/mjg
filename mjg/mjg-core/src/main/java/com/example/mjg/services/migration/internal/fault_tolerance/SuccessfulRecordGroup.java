@@ -5,12 +5,14 @@ import com.example.mjg.services.migration.internal.migration_runner.MigrationRun
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.io.Serializable;
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @AllArgsConstructor
 public class SuccessfulRecordGroup implements RecordGroup {
-    private List<MigratableEntity> records;
+    private Set<Serializable> recordIds;
 
     private MigrationRunner migrationRunner;
 }

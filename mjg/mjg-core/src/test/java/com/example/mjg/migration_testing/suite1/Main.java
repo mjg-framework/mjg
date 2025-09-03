@@ -6,7 +6,7 @@ import com.example.mjg.migration_testing.suite1.data.mocking.common.MockDataLoad
 import com.example.mjg.migration_testing.suite1.data.stores.IndicatorStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore;
-import com.example.mjg.services.migration.MigrationService;
+import com.example.mjg.migration_testing.suite1.utils.MigrationServiceSingleton;
 
 import java.util.List;
 
@@ -38,7 +38,7 @@ public class Main {
 
         System.out.println("BEFORE MIGRATION: StationIndicatorStore content: " + MockDataLoader.getStore(StationIndicatorStore.class).getRecords());
 
-        MigrationService._getInstForTesting().runWithoutPreviousProgress();
+        MigrationServiceSingleton.getInstance().runWithoutPreviousProgress();
 
         System.out.println("AFTER MIGRATION: StationIndicatorStore content: " + MockDataLoader.getStore(StationIndicatorStore.class).getRecords());
     }

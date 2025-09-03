@@ -3,6 +3,8 @@ package com.example.mjg.migration_testing.suite1.data.entities;
 import com.example.mjg.data.MigratableEntity;
 import lombok.*;
 
+import java.io.Serializable;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,7 +24,7 @@ public class StationIndicatorEntity2 implements MigratableEntity {
     private double averageValue = 0.0;
 
     @Override
-    public Object getMigratableId() {
+    public Serializable getMigratableId() {
         return id;
     }
 

@@ -134,7 +134,7 @@ type MigrationProgress_ObjectSchema = {
     "migrationProgress": {
         [fqcn: string]: {
             "fqcn": string,
-            "migratedRecords": Array<string | number /* int, long */>,
+            "succeededRecordIds": Array<string | number /* int, long */>,
             "failedRecords": Array<{
                 "id": string | number /* int, long */,
                 "description": string,
@@ -307,7 +307,9 @@ stores, here is how to access *any* other
 store, for example `CStore`:
 
 ```java
-DataStore<?, ?, ?> instanceOfCStore = dataStoreRegistry.get(
+// DataStore<ENTITY_TYPE, ID_TYPE, FILTERSET_TYPE>
+DataStore<? extends MigratableEntity, ? extends Serializable, ? extends DataFilterSet>
+instanceOfCStore = dataStoreRegistry.get(
     CStore.class.getCanonicalName()
 );
 ```

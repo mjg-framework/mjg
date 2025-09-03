@@ -17,6 +17,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.example.mjg.migration_testing.suite1.utils.MigrationServiceSingleton;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +35,6 @@ import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStor
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore2;
 import com.example.mjg.migration_testing.suite1.migrations.M1_PopulatePivotTable_StationIndicators;
-import com.example.mjg.services.migration.MigrationService;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
 import com.example.mjg.utils.ObjectMapperFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -90,7 +90,7 @@ public class Test2_HandleDuplicates {
     @BeforeAll
     public static void setup() {
         AtomicInteger numTimesHandleDuplicateCalled = (
-            (M1_PopulatePivotTable_StationIndicators) MigrationService._getInstForTesting()
+            (M1_PopulatePivotTable_StationIndicators) MigrationServiceSingleton.getInstance()
                 .getMigrationRegistry().get(
                     M1_PopulatePivotTable_StationIndicators.class.getCanonicalName()
                 )
@@ -146,7 +146,7 @@ public class Test2_HandleDuplicates {
         };
 
         // First run
-        MigrationService._getInstForTesting().addProgressPersistenceCallback(
+        MigrationServiceSingleton.getInstance().addProgressPersistenceCallback(
             migrationProgress -> {
                 saveMigrationProgressToFile.accept(
                     migrationProgress,
@@ -154,15 +154,15 @@ public class Test2_HandleDuplicates {
                 );
             }
         );
-        MigrationService._getInstForTesting().run(new MigrationProgress());
+        MigrationServiceSingleton.getInstance().run(new MigrationProgress());
         assertEquals(
             INITIAL_STATIONS,
             MockDataLoader.getStore(StationStore.class).getRecords()
         );
 
         // Rerun to see how it skips migrated records from previous run
-        MigrationService._getInstForTesting().removeAllProgressPersistenceCallbacks();
-        MigrationService._getInstForTesting().addProgressPersistenceCallback(
+        MigrationServiceSingleton.getInstance().removeAllProgressPersistenceCallbacks();
+        MigrationServiceSingleton.getInstance().addProgressPersistenceCallback(
             migrationProgress -> {
                 saveMigrationProgressToFile.accept(
                     migrationProgress,
@@ -171,11 +171,11 @@ public class Test2_HandleDuplicates {
             }
         );
 
-        MigrationService._getInstForTesting().runWithPreviousProgress();
+        MigrationServiceSingleton.getInstance().runWithPreviousProgress();
 
         // Rerun to see how it handles duplicates
-        MigrationService._getInstForTesting().removeAllProgressPersistenceCallbacks();
-        MigrationService._getInstForTesting().addProgressPersistenceCallback(
+        MigrationServiceSingleton.getInstance().removeAllProgressPersistenceCallbacks();
+        MigrationServiceSingleton.getInstance().addProgressPersistenceCallback(
             migrationProgress -> {
                 saveMigrationProgressToFile.accept(
                     migrationProgress,
@@ -184,13 +184,13 @@ public class Test2_HandleDuplicates {
             }
         );
 
-        MigrationService._getInstForTesting().runWithoutPreviousProgress();
+        MigrationServiceSingleton.getInstance().runWithoutPreviousProgress();
     }
 
     @Test
     public void testHandleDuplicateCalled() {
         AtomicInteger numTimesHandleDuplicateCalled = (
-            (M1_PopulatePivotTable_StationIndicators) MigrationService._getInstForTesting()
+            (M1_PopulatePivotTable_StationIndicators) MigrationServiceSingleton.getInstance()
                 .getMigrationRegistry().get(
                     M1_PopulatePivotTable_StationIndicators.class.getCanonicalName()
                 )

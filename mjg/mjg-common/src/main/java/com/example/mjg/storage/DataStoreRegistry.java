@@ -1,22 +1,20 @@
 package com.example.mjg.storage;
 
+import com.example.mjg.data.DataFilterSet;
 import com.example.mjg.data.DataStore;
 import com.example.mjg.data.MigratableEntity;
 
 import lombok.NoArgsConstructor;
 
-@NoArgsConstructor
-public class DataStoreRegistry extends AbstractRegistry<DataStore<? extends MigratableEntity, Object, Object>> {
-    public <ENTITY extends MigratableEntity, FILTER_TYPE, FILTER_VALUE>
-    void set(
-        Class<? extends DataStore<ENTITY, FILTER_TYPE, FILTER_VALUE>> clazz,
-        DataStore<ENTITY, FILTER_TYPE, FILTER_VALUE> instance)
-    {
-        @SuppressWarnings("unchecked")
-        DataStore<? extends MigratableEntity, Object, Object> realInstance = (
-            DataStore<? extends MigratableEntity, Object, Object>
-        ) instance;
+import java.io.Serializable;
 
-        set(clazz.getCanonicalName(), realInstance);
+@NoArgsConstructor
+public class DataStoreRegistry extends AbstractRegistry<DataStore<? extends MigratableEntity, ? extends Serializable, ? extends DataFilterSet>> {
+    public <T extends MigratableEntity, ID extends Serializable, F extends DataFilterSet>
+    void set(
+        Class<? extends DataStore<T, ID, F>> clazz,
+        DataStore<T, ID, F> instance
+    ) {
+        set(clazz.getCanonicalName(), instance);
     }
 }

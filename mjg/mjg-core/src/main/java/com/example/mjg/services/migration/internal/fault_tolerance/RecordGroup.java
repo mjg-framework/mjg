@@ -6,7 +6,5 @@ import com.example.mjg.services.migration.internal.migration_runner.MigrationRun
 import java.util.List;
 
 public interface RecordGroup {
-    List<MigratableEntity> getRecords();
-
     MigrationRunner getMigrationRunner();
 }

@@ -10,12 +10,14 @@ import com.example.mongo_migrate_multids.helpers.ObjectIdHelpers;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.Serializable;
+
 @Getter
 @Setter
 @Document(value = "areas")
 public class AreaEntity implements MigratableEntity {
     @Override
-    public Object getMigratableId() {
+    public Serializable getMigratableId() {
         return id;
     }
 

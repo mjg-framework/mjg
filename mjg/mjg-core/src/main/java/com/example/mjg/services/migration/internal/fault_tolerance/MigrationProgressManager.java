@@ -11,6 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -50,36 +51,31 @@ public class MigrationProgressManager {
     /**
      * Get and remove.
      */
-    public List<MigratableEntity> popFailedRecords(String migrationFQCN) {
-        List<MigratableEntity> failedRecords = new ArrayList<>();
-        migrationProgressContainer.update(migrationProgress -> {
+    public Set<Serializable> getFailedRecordIds(String migrationFQCN) {
+        Set<Serializable> failedRecordIds = new HashSet<>();
+        migrationProgressContainer.read(migrationProgress -> {
             MigrationProgressPerMigrationClass migrationProgressOfThisMigrationClass = migrationProgress
-                .getMigrationProgress().computeIfAbsent(
-                    migrationFQCN,
-                    k -> new MigrationProgressPerMigrationClass(migrationFQCN)
+                .getMigrationProgress().get(
+                    migrationFQCN
                 );
-            
-            List<FailedRecord> failedRecordsInMigrationProgress = migrationProgressOfThisMigrationClass.getFailedRecords();
-            List<MigratableEntity> _failedRecords = failedRecordsInMigrationProgress
-                .stream()
-                .filter(failedRecord -> FailedRecordAction.Type.RETRY.equals(failedRecord.getAction().getActionType()))
-                .map(failedRecord -> (MigratableEntity) new FailedMigratableEntity(
-                    failedRecord.getId(),
-                    failedRecord.getDescription()
-                ))
-                .toList();
-            
-            failedRecords.addAll(_failedRecords);
 
-            failedRecordsInMigrationProgress.clear();
-            return migrationProgress;
+            if (migrationProgressOfThisMigrationClass != null) {
+                List<FailedRecord> failedRecordsInMigrationProgress = migrationProgressOfThisMigrationClass.getFailedRecords();
+                Set<Serializable> failedRecordIds1 = failedRecordsInMigrationProgress
+                    .stream()
+                    .filter(failedRecord -> FailedRecordAction.Type.RETRY.equals(failedRecord.getAction().getActionType()))
+                    .map(FailedRecord::getId)
+                    .collect(Collectors.toSet());
+
+                failedRecordIds.addAll(failedRecordIds1);
+            }
         });
 
-        return failedRecords;
+        return failedRecordIds;
     }
 
-    public Set<Object> getIgnoredRecordIds(String migrationFQCN) {
-        Set<Object> ignoredRecordIds = new HashSet<>();
+    public Set<Serializable> getIgnoredRecordIds(String migrationFQCN) {
+        Set<Serializable> ignoredRecordIds = new HashSet<>();
         migrationProgressContainer.read(migrationProgress -> {
             MigrationProgressPerMigrationClass migrationProgressOfThisMigrationClass = migrationProgress
                 .getMigrationProgress().getOrDefault(
@@ -87,7 +83,7 @@ public class MigrationProgressManager {
                     new MigrationProgressPerMigrationClass(migrationFQCN)
                 );
             
-            Set<Object> ignoredRecordIds1 = migrationProgressOfThisMigrationClass.getFailedRecords()
+            Set<Serializable> ignoredRecordIds1 = migrationProgressOfThisMigrationClass.getFailedRecords()
                 .stream()
                 .filter(failedRecord -> failedRecord.getAction().getActionType() == FailedRecordAction.Type.IGNORE)
                 .map(FailedRecord::getId)
@@ -102,7 +98,7 @@ public class MigrationProgressManager {
     @Getter
     @AllArgsConstructor
     public static class FailedMigratableEntity implements MigratableEntity {
-        private Object migratableId;
+        private Serializable migratableId;
 
         private String migratableDescription;
     }
@@ -115,6 +111,7 @@ public class MigrationProgressManager {
         migrationProgressContainer.read(migrationProgress -> {
             if (migrationProgress == null) {
                 log.warn("Migration progress is null, ignoring persistence callbacks");
+                return;
             }
             onProgressPersistenceCallbacksContainer.read(callbacks -> {
                 if (callbacks.isEmpty()) {
@@ -154,18 +151,26 @@ public class MigrationProgressManager {
     }
 
     public void reportSuccessfulRecords(
-            SuccessfulRecordGroup successfulRecordGroup) {
+            SuccessfulRecordGroup successfulRecordGroup
+    ) {
         migrationProgressContainer.update(migrationProgress -> {
             MigrationProgressPerMigrationClass progressInThisMigrationClass = migrationProgress
                     .getMigrationProgress()
                     .computeIfAbsent(
                             successfulRecordGroup.getMigrationRunner().getMigrationFQCN(),
-                            MigrationProgressPerMigrationClass::new);
+                            MigrationProgressPerMigrationClass::new
+                    );
 
-            progressInThisMigrationClass.getMigratedRecordIds().addAll(
-                    successfulRecordGroup.getRecords().stream()
-                            .map(MigratableEntity::getMigratableId)
-                            .toList());
+            progressInThisMigrationClass.getSucceededRecordIds().addAll(
+                    successfulRecordGroup.getRecordIds()
+            );
+
+            progressInThisMigrationClass.getFailedRecords()
+                .removeIf(failedRecord -> {
+                    return progressInThisMigrationClass.getSucceededRecordIds().contains(
+                        failedRecord.getId()
+                    );
+                });
 
             return migrationProgress;
         });
@@ -198,13 +203,13 @@ public class MigrationProgressManager {
                     .computeIfAbsent(
                             failedRecordGroup.getMigrationRunner().getMigrationFQCN(),
                             MigrationProgressPerMigrationClass::new);
-            
+
             List<FailedRecord> reportedFailedRecords = progressInThisMigrationClass.getFailedRecords();
 
             // Overwriting records with same IDs
-            Set<Object> oldIds = reportedFailedRecords.stream().map(FailedRecord::getId).collect(Collectors.toSet());
-            Set<Object> newIds = failedRecordGroup.getRecords().stream().map(MigratableEntity::getMigratableId).collect(Collectors.toSet());
-            Set<Object> idsToRemove = new HashSet<>(oldIds);
+            Set<Serializable> oldIds = reportedFailedRecords.stream().map(FailedRecord::getId).collect(Collectors.toSet());
+            Set<Serializable> newIds = failedRecordGroup.getRecords().stream().map(MigratableEntity::getMigratableId).collect(Collectors.toSet());
+            Set<Serializable> idsToRemove = new HashSet<>(oldIds);
             idsToRemove.retainAll(newIds);
             reportedFailedRecords.removeIf(failedRecord -> idsToRemove.contains(failedRecord.getId()));
 
@@ -221,6 +226,10 @@ public class MigrationProgressManager {
                     .toList()
             );
 
+            // Remove failed records from successful record set
+            progressInThisMigrationClass.getSucceededRecordIds()
+                .removeAll(newIds);
+
             return migrationProgress;
         });
 
@@ -229,18 +238,19 @@ public class MigrationProgressManager {
 
     public void excludeSuccessfullyMigratedRecordIds(
             String migrationFQCN,
-            Set<Object> recordIds) {
+            Set<Serializable> recordIds
+    ) {
         migrationProgressContainer.read(migrationProgress -> {
             MigrationProgressPerMigrationClass progressInThisMigrationClass = migrationProgress
                     .getMigrationProgress()
-                    .computeIfAbsent(
-                            migrationFQCN,
-                            MigrationProgressPerMigrationClass::new);
+                    .get(migrationFQCN);
 
-            Set<Object> migratedRecordIds = progressInThisMigrationClass
-                    .getMigratedRecordIds();
+            if (progressInThisMigrationClass != null) {
+                Set<Serializable> migratedRecordIds = progressInThisMigrationClass
+                    .getSucceededRecordIds();
 
-            recordIds.removeAll(migratedRecordIds);
+                recordIds.removeAll(migratedRecordIds);
+            }
         });
     }
 

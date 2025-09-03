@@ -1,25 +1,18 @@
 package com.example.mjg.data;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import java.io.Serializable;
 import java.util.List;
-import java.util.Map;
 
-@AllArgsConstructor
-public final class DataPage<T extends MigratableEntity, FILTER_TYPE, FILTER_VALUE> {
-    @Getter
-    private final DataStore<T, FILTER_TYPE, FILTER_VALUE> store;
+public interface DataPage<T extends MigratableEntity, ID extends Serializable, F extends DataFilterSet> {
+    DataStore<T, ID, F> getDataStore();
 
-    @Getter
-    private final Integer pageNumber;
+    F getFilterSet();
 
-    @Getter
-    private final Map<FILTER_TYPE, FILTER_VALUE> filters;
+    Integer getPageNumber();
 
-    @Getter
-    private List<T> records;
+    List<T> getRecords();
 
-    public Integer getSize() {
+    default Integer getSize() {
         return getRecords().size();
     }
 }

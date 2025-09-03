@@ -1,11 +1,13 @@
 package com.example.mjg.services.migration.internal.reflective;
 
+import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.example.mjg.data.DataFilterSet;
 import com.example.mjg.data.DataStore;
 import com.example.mjg.data.MigratableEntity;
 import com.example.mjg.storage.DataStoreRegistry;
@@ -40,13 +42,14 @@ public class RMigrationUtils {
         this.rTransformAndSaveTo = rTransformAndSaveTo;
     }
 
-    public Map<Object, Object> callMatchingMethod(
+    public DataFilterSet callMatchingMethod(
         RMatchWith rMatchWith,
         MigratableEntity record,
         Map<String, Object> aggregates
     ) throws Exception {
         String methodName = "matchWith" + rMatchWith.getMatchWith().value().getSimpleName();
-        DataStore<?, ?, ?> matchingStoreInstance = dataStoreRegistry.get(rMatchWith.getDataStoreReflection().getStoreClass().getCanonicalName());
+        DataStore<? extends MigratableEntity, ? extends Serializable, ? extends DataFilterSet>
+            matchingStoreInstance = dataStoreRegistry.get(rMatchWith.getDataStoreReflection().getStoreClass().getCanonicalName());
 
         final Method method;
         {
@@ -67,9 +70,9 @@ public class RMigrationUtils {
             }
         }
 
-        Map<Object, Object> filters = null;
+        DataFilterSet filters = null;
         {
-            Object rawFilters = invokeMethod(
+            Object rawFilterSet = invokeMethod(
                 method,
 
                 record,
@@ -77,14 +80,12 @@ public class RMigrationUtils {
                 matchingStoreInstance
             );
 
-            if (rawFilters != null) {
-                if (rawFilters instanceof Map<?, ?> map) {
-                    @SuppressWarnings("unchecked")
-                    Map<Object, Object> castFilterMap = (Map<Object, Object>)map;
-                    filters = castFilterMap;
+            if (rawFilterSet != null) {
+                if (rawFilterSet instanceof DataFilterSet realFilterSet) {
+                    filters = realFilterSet;
                 } else {
                     throw new RuntimeException(
-                        "Could not cast return value of matching method to Map<?, ?>: "
+                        "Could not cast return value of matching method to DataFilterSet: "
                         + methodName + " from " + migrationClass.getCanonicalName()
                     );
                 }
@@ -97,8 +98,7 @@ public class RMigrationUtils {
     public void callStartReductionMethod(
         MigratableEntity record,
         Map<String, Object> aggregates
-    )
-    throws Exception {
+    ) throws Exception {
         String methodName = "startReduction";
 
         final Method method;
@@ -206,13 +206,15 @@ public class RMigrationUtils {
         MigratableEntity inputRecord,
         List<MigratableEntity> outputRecordsFromTransform
     ) throws Exception {
-        DataStore<?, ?, ?> inputDataStoreInstance = dataStoreRegistry.get(
-            rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
-        );
+        DataStore<? extends MigratableEntity, ? extends Serializable, ? extends DataFilterSet>
+            inputDataStoreInstance = dataStoreRegistry.get(
+                rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
+            );
 
-        DataStore<?, ?, ?> outputDataStoreInstance = dataStoreRegistry.get(
-            rTransformAndSaveTo.getDataStoreReflection().getStoreClass().getCanonicalName()
-        );
+        DataStore<? extends MigratableEntity, ? extends Serializable, ? extends DataFilterSet>
+            outputDataStoreInstance = dataStoreRegistry.get(
+                rTransformAndSaveTo.getDataStoreReflection().getStoreClass().getCanonicalName()
+            );
 
         String methodName = "handleDuplicate";
 

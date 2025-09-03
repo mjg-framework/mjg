@@ -9,8 +9,8 @@ import com.example.mjg.migration_testing.suite1.data.entities.MeasurementResultE
 import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity2;
-import com.example.mjg.migration_testing.suite1.data.filtering.FilterMeasurementResultsBy;
-import com.example.mjg.migration_testing.suite1.data.filtering.FilterStationsBy2;
+import com.example.mjg.migration_testing.suite1.data.filtering.MeasurementResultsFilterSet;
+import com.example.mjg.migration_testing.suite1.data.filtering.StationsFilterSet;
 import com.example.mjg.migration_testing.suite1.data.stores.MeasurementResultStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore2;
@@ -19,6 +19,7 @@ import com.example.mjg.storage.DataStoreRegistry;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Migration
 @ForEachRecordFrom(StationIndicatorStore.class)
@@ -35,20 +36,24 @@ import java.util.Map;
     cardinality = Cardinality.EXACTLY_ONE
 )
 public class M3_Migrate_StationIndicator2 {
-    public Map<FilterStationsBy2, Object> matchWithStationStore2(
+    public StationsFilterSet matchWithStationStore2(
         StationIndicatorEntity record,
         Map<String, Object> aggregates,
         StationStore2 stationStore2
     ) {
-        return Map.of(FilterStationsBy2.STATION_CODE, "new code " + record.getStationCode());
+        return StationsFilterSet.filterByStationCodeIn(
+            Set.of("new code " + record.getStationCode())
+        );
     }
 
-    public Map<FilterMeasurementResultsBy, Object> matchWithMeasurementResultStore(
+    public MeasurementResultsFilterSet matchWithMeasurementResultStore(
         StationIndicatorEntity record,
         Map<String, Object> aggregates,
         MeasurementResultStore measurementResultStore
     ) {
-        return Map.of(FilterMeasurementResultsBy.STATION_INDICATOR_ID, record.getId());
+        return MeasurementResultsFilterSet.filterByStationIndicatorIdIn(
+            Set.of(record.getId())
+        );
     }
 
     public void startReduction(

@@ -1,11 +1,12 @@
 package com.example.mjg.migration_testing.suite1.data.stores.common;
 
+import com.example.mjg.data.DataFilterSet;
 import com.example.mjg.data.MigratableEntity;
 
 import java.util.function.Function;
 
-public abstract class StringIDAbstractStore<T extends MigratableEntity, FILTER_TYPE, FILTER_VALUE>
-extends SimpleAbstractStore<T, String, FILTER_TYPE, FILTER_VALUE> {
+public abstract class StringIDAbstractStore<T extends MigratableEntity, F extends DataFilterSet>
+extends SimpleAbstractStore<T, String, F> {
     @Override
     protected String generateNewRecordId(Function<String, Boolean> idAlreadyExists) {
         String id;

@@ -61,23 +61,15 @@
 
     <dependency>
       <groupId>com.example.mjg</groupId>
-      <artifactId>mjg-common</artifactId>
-      <version>${project.dependencies.mjg.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>com.example.mjg</groupId>
-      <artifactId>mjg-annotations</artifactId>
-      <version>${project.dependencies.mjg.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>com.example.mjg</groupId>
       <artifactId>mjg-processor</artifactId>
       <version>${project.dependencies.mjg.version}</version>
-      <scope>provided</scope>
     </dependency>
 
+    <dependency>
+      <groupId>com.example.mjg</groupId>
+      <artifactId>mjg-adapter-spring-data-mongodb</artifactId>
+      <version>${project.dependencies.mjg.version}</version>
+    </dependency>
 
   </dependencies>
 

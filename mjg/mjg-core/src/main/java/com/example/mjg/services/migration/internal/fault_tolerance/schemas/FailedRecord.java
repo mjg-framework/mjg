@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Setter
 @EqualsAndHashCode
 public class FailedRecord implements Serializable {
-    private Object id = null;
+    private Serializable id = null;
 
     private String description = "";
 

@@ -1,32 +1,33 @@
 package com.example.mjg.migration_testing.suite1.data.stores;
 
 import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity;
-import com.example.mjg.migration_testing.suite1.data.filtering.FilterStationIndicatorsBy;
+import com.example.mjg.migration_testing.suite1.data.filtering.StationIndicatorsFilterSet;
 import com.example.mjg.migration_testing.suite1.data.stores.common.StringIDAbstractStore;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-public class StationIndicatorStore extends StringIDAbstractStore<StationIndicatorEntity, FilterStationIndicatorsBy, Object> {
+public class StationIndicatorStore extends StringIDAbstractStore<StationIndicatorEntity, StationIndicatorsFilterSet> {
     @Override
-    protected Stream<StationIndicatorEntity> applyFilter(Stream<StationIndicatorEntity> recordStream, FilterStationIndicatorsBy filterType, Object filterValue) {
-        if (filterType == FilterStationIndicatorsBy.ID) {
-            return recordStream.filter(record -> record.getId().equals(filterValue));
+    protected Stream<StationIndicatorEntity> applyFilterSet(Stream<StationIndicatorEntity> recordStream, StationIndicatorsFilterSet filterSet) {
+        if (filterSet.isTakeAll()) return recordStream;
+
+        if (filterSet.getFilterByIdIn() != null) {
+            return recordStream.filter(record -> {
+                return filterSet.getFilterByIdIn().contains(record.getId());
+            });
         }
 
-        if (filterType == FilterStationIndicatorsBy.ID_IN) {
-            @SuppressWarnings("unchecked")
-            Set<String> idIn = (Set<String>) filterValue;
-            return recordStream.filter(record -> idIn.contains(record.getId()));
+        if (filterSet.getFilterByStationCodeIn() != null) {
+            return recordStream.filter(record -> {
+                return filterSet.getFilterByStationCodeIn().contains(record.getStationCode());
+            });
         }
 
-        if (filterType == FilterStationIndicatorsBy.STATION_CODE) {
-            return recordStream.filter(record -> record.getStationCode().equals(filterValue));
-        }
-
-        if (filterType == FilterStationIndicatorsBy.INDICATOR_CODE) {
-            return recordStream.filter(record -> record.getIndicatorCode().equals(filterValue));
+        if (filterSet.getFilterByIndicatorCodeIn() != null) {
+            return recordStream.filter(record -> {
+                return filterSet.getFilterByIndicatorCodeIn().contains(record.getIndicatorCode());
+            });
         }
 
         throw new IllegalArgumentException("Filter type not supported");
@@ -51,10 +52,12 @@ public class StationIndicatorStore extends StringIDAbstractStore<StationIndicato
     }
 
     @Override
-    protected Map<FilterStationIndicatorsBy, Object> doMatchByIdIn(Set<Object> ids) {
-        return Map.of(
-            FilterStationIndicatorsBy.ID_IN,
-            ids
-        );
+    protected StationIndicatorsFilterSet doMatchByIdIn(Set<String> ids) {
+        return StationIndicatorsFilterSet.filterByIdIn(ids);
+    }
+
+    @Override
+    protected StationIndicatorsFilterSet doMatchAll() {
+        return StationIndicatorsFilterSet.takeAll();
     }
 }

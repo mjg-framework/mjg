@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.example.mjg.migration_testing.suite1.utils.MigrationServiceSingleton;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +35,6 @@ import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStor
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore2;
 import com.example.mjg.migration_testing.suite1.migrations.M1_PopulatePivotTable_StationIndicators;
-import com.example.mjg.services.migration.MigrationService;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.FailedRecordAction;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgressPerMigrationClass;
@@ -191,7 +191,7 @@ public class Test4_HandleIgnoredRecordsInRestoredProgress {
         );
 
         try {
-            MigrationService._getInstForTesting().addProgressPersistenceCallback(
+            MigrationServiceSingleton.getInstance().addProgressPersistenceCallback(
                 migrationProgress -> {
                     Test4_HandleIgnoredRecordsInRestoredProgress.saveMigrationProgressToFileAndIgnoreSome(
                         migrationProgress,
@@ -214,7 +214,7 @@ public class Test4_HandleIgnoredRecordsInRestoredProgress {
                     M1_PopulatePivotTable_StationIndicators.disableFailRandomly();
                 }
 
-                MigrationService._getInstForTesting().run(progress);
+                MigrationServiceSingleton.getInstance().run(progress);
 
                 progress = Test4_HandleIgnoredRecordsInRestoredProgress.loadMigrationProgressFromFile("migration-progress-test-4-run-" + i + ".json");
 

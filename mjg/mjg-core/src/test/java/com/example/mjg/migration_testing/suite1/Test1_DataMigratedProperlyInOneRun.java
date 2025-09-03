@@ -8,7 +8,7 @@ import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEn
 import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity2;
 import com.example.mjg.migration_testing.suite1.data.mocking.common.MockDataLoader;
 import com.example.mjg.migration_testing.suite1.data.stores.*;
-import com.example.mjg.services.migration.MigrationService;
+import com.example.mjg.migration_testing.suite1.utils.MigrationServiceSingleton;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
 import com.example.mjg.utils.ObjectMapperFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -129,7 +129,7 @@ public class Test1_DataMigratedProperlyInOneRun {
             }
         };
 
-        MigrationService._getInstForTesting().addProgressPersistenceCallback(
+        MigrationServiceSingleton.getInstance().addProgressPersistenceCallback(
             migrationProgress -> {
                 saveMigrationProgressToFile.accept(
                     migrationProgress,
@@ -137,7 +137,7 @@ public class Test1_DataMigratedProperlyInOneRun {
                 );
             }
         );
-        MigrationService._getInstForTesting().runWithoutPreviousProgress();
+        MigrationServiceSingleton.getInstance().runWithoutPreviousProgress();
     }
 
     @Test

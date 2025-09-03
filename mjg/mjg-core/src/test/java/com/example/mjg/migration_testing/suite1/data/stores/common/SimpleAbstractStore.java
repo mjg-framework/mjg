@@ -1,21 +1,19 @@
 package com.example.mjg.migration_testing.suite1.data.stores.common;
 
-import com.example.mjg.data.DataPage;
-import com.example.mjg.data.DataStore;
-import com.example.mjg.data.MigratableEntity;
-import com.example.mjg.exceptions.BaseMigrationException;
+import com.example.mjg.data.*;
 import com.example.mjg.exceptions.DuplicateDataException;
 
 import lombok.Getter;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-public abstract class SimpleAbstractStore<T extends MigratableEntity, ID, FILTER_TYPE, FILTER_VALUE> extends DataStore<T, FILTER_TYPE, FILTER_VALUE> {
-    protected abstract Stream<T> applyFilter(Stream<T> recordStream, FILTER_TYPE filterType, FILTER_VALUE filterValue);
+public abstract class SimpleAbstractStore<T extends MigratableEntity, ID extends Serializable, F extends DataFilterSet>
+extends DataStore<T, ID, F> {
+    protected abstract Stream<T> applyFilterSet(Stream<T> recordStream, F filterSet);
     protected abstract ID getRecordId(T record);
     protected abstract void setRecordId(T record, ID id);
     protected abstract void assignRecordExceptId(T dest, T src);
@@ -30,19 +28,19 @@ public abstract class SimpleAbstractStore<T extends MigratableEntity, ID, FILTER
 
 
     @Override
-    protected List<T> doGetFirstPageOfRecordsWithFilter(
-            Map<FILTER_TYPE, FILTER_VALUE> filters,
+    protected DataPage<T, ID, F> doGetFirstPageOfRecords(
+            F filterSet,
             int pageSize
     ) {
-        return getRecordsAtPage(filters, 0, pageSize);
+        return getRecordsAtPage(filterSet, 0, pageSize);
     }
 
     @Override
-    protected List<T> doGetNextPageOfRecordsAfter(
-            DataPage<T, FILTER_TYPE, FILTER_VALUE> previousPage
+    protected DataPage<T, ID, F> doGetNextPageOfRecords(
+        DataPage<T, ID, F> previousPage
     ) {
         return getRecordsAtPage(
-            previousPage.getFilters(),
+            previousPage.getFilterSet(),
             previousPage.getPageNumber() + 1,
             previousPage.getSize()
         );
@@ -50,7 +48,7 @@ public abstract class SimpleAbstractStore<T extends MigratableEntity, ID, FILTER
 
     @Override
     protected void doSave(T record)
-    throws BaseMigrationException {
+    throws Exception {
         for (T existingRecord : records) {
             if (getRecordId(existingRecord).equals(getRecordId(record))) {
                 throw new DuplicateDataException("A record with the same ID already exists: " + record.getMigratableDescription());
@@ -66,8 +64,8 @@ public abstract class SimpleAbstractStore<T extends MigratableEntity, ID, FILTER
     }
 
     @Override
-    protected void doSaveMultiple(List<T> records)
-    throws BaseMigrationException {
+    protected void doSaveAll(List<T> records)
+    throws Exception {
         for (T newRecord : records) {
             doSave(newRecord);
         }
@@ -77,27 +75,22 @@ public abstract class SimpleAbstractStore<T extends MigratableEntity, ID, FILTER
 
 
 
-    private Stream<T> applyFilters(Stream<T> recordStream, Map<FILTER_TYPE, FILTER_VALUE> filters) {
-        Stream<T> filteredRecordStream = recordStream;
-        for (Map.Entry<FILTER_TYPE, FILTER_VALUE> entry : filters.entrySet()) {
-            filteredRecordStream = applyFilter(filteredRecordStream, entry.getKey(), entry.getValue());
-        }
-        return filteredRecordStream;
-    }
-
-    private List<T> getRecordsAtPage(Map<FILTER_TYPE, FILTER_VALUE> filters, int pageNumber, int pageSize) {
-        List<T> filteredList = applyFilters(records.stream(), filters).toList();
+    private DataPage<T, ID, F> getRecordsAtPage(F filterSet, int pageNumber, int pageSize) {
+        List<T> filteredList = applyFilterSet(records.stream(), filterSet).toList();
         int offset = pageNumber * pageSize;
 
+        List<T> resultRecords;
         if (offset >= filteredList.size()) {
-            return List.of();
+            resultRecords = List.of();
+        } else {
+            resultRecords = filteredList
+                .subList(
+                    offset,
+                    Math.min(offset + pageSize, filteredList.size())
+                );
         }
 
-        return filteredList
-            .subList(
-                offset,
-                Math.min(offset + pageSize, filteredList.size())
-            );
+        return new SimpleDataPage<>(this, filterSet, pageNumber, resultRecords);
     }
 
     private boolean checkIdAlreadyExists(ID id) {

@@ -1,28 +1,27 @@
 package com.example.mjg.migration_testing.suite1.data.stores;
 
 import com.example.mjg.migration_testing.suite1.data.entities.IndicatorEntity;
-import com.example.mjg.migration_testing.suite1.data.filtering.FilterIndicatorsBy;
+import com.example.mjg.migration_testing.suite1.data.filtering.IndicatorsFilterSet;
 import com.example.mjg.migration_testing.suite1.data.stores.common.IntegerIDAbstractStore;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-public class IndicatorStore extends IntegerIDAbstractStore<IndicatorEntity, FilterIndicatorsBy, Object> {
+public class IndicatorStore extends IntegerIDAbstractStore<IndicatorEntity, IndicatorsFilterSet> {
     @Override
-    protected Stream<IndicatorEntity> applyFilter(Stream<IndicatorEntity> recordStream, FilterIndicatorsBy filterType, Object filterValue) {
-        if (filterType == FilterIndicatorsBy.ID) {
-            return recordStream.filter(record -> record.getId().equals(filterValue));
+    protected Stream<IndicatorEntity> applyFilterSet(Stream<IndicatorEntity> recordStream, IndicatorsFilterSet filterSet) {
+        if (filterSet.isTakeAll()) return recordStream;
+
+        if (filterSet.getFilterByIdIn() != null) {
+            return recordStream.filter(record -> {
+                return filterSet.getFilterByIdIn().contains(record.getId());
+            });
         }
 
-        if (filterType == FilterIndicatorsBy.ID_IN) {
-            @SuppressWarnings("unchecked")
-            Set<Integer> idIn = (Set<Integer>) filterValue;
-            return recordStream.filter(record -> idIn.contains(record.getId()));
-        }
-
-        if (filterType == FilterIndicatorsBy.INDICATOR_CODE) {
-            return recordStream.filter(record -> record.getIndicatorCode().equals(filterValue));
+        if (filterSet.getFilterByIndicatorCodeIn() != null) {
+            return recordStream.filter(record -> {
+                return filterSet.getFilterByIndicatorCodeIn().contains(record.getIndicatorCode());
+            });
         }
 
         throw new IllegalArgumentException("Filter type not supported");
@@ -45,10 +44,12 @@ public class IndicatorStore extends IntegerIDAbstractStore<IndicatorEntity, Filt
     }
 
     @Override
-    protected Map<FilterIndicatorsBy, Object> doMatchByIdIn(Set<Object> ids) {
-        return Map.of(
-            FilterIndicatorsBy.ID_IN,
-            ids
-        );
+    protected IndicatorsFilterSet doMatchByIdIn(Set<Integer> ids) {
+        return IndicatorsFilterSet.filterByIdIn(ids);
+    }
+
+    @Override
+    protected IndicatorsFilterSet doMatchAll() {
+        return IndicatorsFilterSet.takeAll();
     }
 }
