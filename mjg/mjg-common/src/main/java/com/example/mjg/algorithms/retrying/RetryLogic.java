@@ -65,6 +65,14 @@ public class RetryLogic {
         RetryDelayInSecondsStep,
         ExceptionReporterStep
     {
+        private Builder copy() {
+            Builder newBuilder = new Builder(maxRetries);
+            newBuilder.retryDelayInSeconds = retryDelayInSeconds;
+            newBuilder.debugContext = debugContext;
+            newBuilder.exceptionReporter = exceptionReporter;
+            return newBuilder;
+        }
+
         private final int maxRetries;
         private int retryDelayInSeconds = 0;
         private String debugContext = null;
@@ -81,7 +89,7 @@ public class RetryLogic {
         @Override
         public RetryDelayInSecondsStep retryDelayInSeconds(int retryDelayInSeconds) {
             this.retryDelayInSeconds = retryDelayInSeconds;
-            return this;
+            return this.copy();
         }
 
         @Override
@@ -89,7 +97,7 @@ public class RetryLogic {
             BiConsumer<Exception, Object> exceptionReporter
         ) {
             this.exceptionReporter = exceptionReporter;
-            return this;
+            return this.copy();
         }
 
         @Override

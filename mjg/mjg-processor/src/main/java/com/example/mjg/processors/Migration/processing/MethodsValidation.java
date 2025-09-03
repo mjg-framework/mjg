@@ -94,9 +94,7 @@ public class MethodsValidation {
     private void ensureMethodsExist(List<MethodPrototype> requiredMethodPrototypes) {
         TypeElement migrationClass = comptimeMigration.getMigrationClass();
 
-        Set<MethodPrototype> remainingMethodPrototypes = requiredMethodPrototypes
-            .stream()
-            .collect(Collectors.toSet());
+        Set<MethodPrototype> remainingMethodPrototypes = new HashSet<>(requiredMethodPrototypes);
 
         final Map<String, Set<MethodPrototype>> allPrototypesByNameMap = remainingMethodPrototypes
             .stream()
@@ -141,18 +139,13 @@ public class MethodsValidation {
                 TypeMirror storeType = elementUtils.getTypeElement(fqcn).asType();
                 var temp = ComptimeUtils.getDataStoreTypeArguments(elementUtils, typeUtils, storeType);
                 TypeMirror storeEntityType = temp.get(0);
-                TypeMirror storeFilterTypeType = temp.get(1);
-                TypeMirror storeFilterValueType = temp.get(2);
+                TypeMirror storeFilterSetType = temp.get(2);
 
                 String storeName = fqcn.substring(fqcn.lastIndexOf('.') + 1);
                 return List.of(
                     new MethodPrototype(
-                        // Map<FILTER_TYPE, FILTER_VALUE> matchWith...(Entity, Map<String, Object>, DataStore);
-                        typeUtils.getDeclaredType(
-                            elementUtils.getTypeElement("java.util.Map"),
-                            storeFilterTypeType,
-                            storeFilterValueType
-                        ),
+                        // F matchWith...(Entity, Map<String, Object>, DataStore);
+                        storeFilterSetType,
 
                         "matchWith" + storeName,
 

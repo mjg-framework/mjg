@@ -8,12 +8,14 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.io.Serializable;
+
 @Document(collection = "indicators")
 @Getter
 @Setter
 public class IndicatorEntity implements MigratableEntity {
     @Override
-    public Object getMigratableId() {
+    public Serializable getMigratableId() {
         return id;
     }
 

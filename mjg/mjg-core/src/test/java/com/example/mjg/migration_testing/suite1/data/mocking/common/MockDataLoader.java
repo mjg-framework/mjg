@@ -3,7 +3,7 @@ package com.example.mjg.migration_testing.suite1.data.mocking.common;
 import com.example.mjg.data.DataStore;
 import com.example.mjg.data.MigratableEntity;
 import com.example.mjg.migration_testing.suite1.data.stores.common.SimpleAbstractStore;
-import com.example.mjg.services.migration.MigrationService;
+import com.example.mjg.migration_testing.suite1.utils.MigrationServiceSingleton;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,7 +16,7 @@ public class MockDataLoader {
         Class<? extends DataStore<T, ?, ?>> dataStoreClass,
         List<T> records
     ) {
-        SimpleAbstractStore<T, ?, ?, ?> mockableStore = getStore(dataStoreClass);
+        SimpleAbstractStore<T, ?, ?> mockableStore = getStore(dataStoreClass);
         mockableStore.getRecords().clear();
         mockableStore.getRecords().addAll(records);
     }
@@ -27,15 +27,15 @@ public class MockDataLoader {
         MockDataLoader.load(dataStoreClass, List.of());
     }
 
-    public static <T extends MigratableEntity> SimpleAbstractStore<T, ?, ?, ?> getStore(
+    public static <T extends MigratableEntity> SimpleAbstractStore<T, ?, ?> getStore(
         Class<? extends DataStore<?, ?, ?>> dataStoreClass
     ) {
         @SuppressWarnings("unchecked")
-        DataStore<T, ?, ?> dataStore = (DataStore<T, ?, ?>) MigrationService._getInstForTesting()
+        DataStore<T, ?, ?> dataStore = (DataStore<T, ?, ?>) MigrationServiceSingleton.getInstance()
             .getDataStoreRegistry()
             .get(dataStoreClass.getCanonicalName());
 
-        if (dataStore instanceof SimpleAbstractStore<T, ?, ?, ?> mockableStore) {
+        if (dataStore instanceof SimpleAbstractStore<T, ?, ?> mockableStore) {
             return mockableStore;
         } else {
             throw new IllegalArgumentException(

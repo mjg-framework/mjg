@@ -1,28 +1,27 @@
 package com.example.mjg.migration_testing.suite1.data.stores;
 
 import com.example.mjg.migration_testing.suite1.data.entities.MeasurementResultEntity;
-import com.example.mjg.migration_testing.suite1.data.filtering.FilterMeasurementResultsBy;
+import com.example.mjg.migration_testing.suite1.data.filtering.MeasurementResultsFilterSet;
 import com.example.mjg.migration_testing.suite1.data.stores.common.IntegerIDAbstractStore;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
-public class MeasurementResultStore extends IntegerIDAbstractStore<MeasurementResultEntity, FilterMeasurementResultsBy, Object> {
+public class MeasurementResultStore extends IntegerIDAbstractStore<MeasurementResultEntity, MeasurementResultsFilterSet> {
     @Override
-    protected Stream<MeasurementResultEntity> applyFilter(Stream<MeasurementResultEntity> recordStream, FilterMeasurementResultsBy filterType, Object filterValue) {
-        if (filterType == FilterMeasurementResultsBy.ID) {
-            return recordStream.filter(record -> record.getId().equals(filterValue));
+    protected Stream<MeasurementResultEntity> applyFilterSet(Stream<MeasurementResultEntity> recordStream, MeasurementResultsFilterSet filterSet) {
+        if (filterSet.isTakeAll()) return recordStream;
+
+        if (filterSet.getFilterByIdIn() != null) {
+            return recordStream.filter(record -> {
+                return filterSet.getFilterByIdIn().contains(record.getId());
+            });
         }
 
-        if (filterType == FilterMeasurementResultsBy.ID_IN) {
-            @SuppressWarnings("unchecked")
-            Set<Integer> idIn = (Set<Integer>) filterValue;
-            return recordStream.filter(record -> idIn.contains(record.getId()));
-       }
-
-        if (filterType == FilterMeasurementResultsBy.STATION_INDICATOR_ID) {
-            return recordStream.filter(record -> record.getStationIndicatorCode().equals(filterValue));
+        if (filterSet.getStationIndicatorIdsIn() != null) {
+            return recordStream.filter(record -> {
+                return filterSet.getStationIndicatorIdsIn().contains(record.getStationIndicatorId());
+            });
         }
 
         throw new IllegalArgumentException("Filter type not supported");
@@ -41,14 +40,16 @@ public class MeasurementResultStore extends IntegerIDAbstractStore<MeasurementRe
     @Override
     protected void assignRecordExceptId(MeasurementResultEntity dest, MeasurementResultEntity src) {
         dest.setValue(src.getValue());
-        dest.setStationIndicatorCode(src.getStationIndicatorCode());
+        dest.setStationIndicatorId(src.getStationIndicatorId());
     }
 
     @Override
-    protected Map<FilterMeasurementResultsBy, Object> doMatchByIdIn(Set<Object> ids) {
-        return Map.of(
-            FilterMeasurementResultsBy.ID_IN,
-            ids
-        );
+    protected MeasurementResultsFilterSet doMatchByIdIn(Set<Integer> ids) {
+        return MeasurementResultsFilterSet.filterByIdIn(ids);
+    }
+
+    @Override
+    protected MeasurementResultsFilterSet doMatchAll() {
+        return MeasurementResultsFilterSet.takeAll();
     }
 }

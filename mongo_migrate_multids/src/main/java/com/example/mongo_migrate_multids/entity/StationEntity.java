@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 import com.example.mongo_migrate_multids.entity.common.BaseEntity;
 import com.example.mongo_migrate_multids.helpers.ObjectIdHelpers;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,7 +19,7 @@ import java.util.List;
 @Setter
 public class StationEntity extends BaseEntity {
     @Override
-    public Object getMigratableId() {
+    public Serializable getMigratableId() {
         return id;
     }
 

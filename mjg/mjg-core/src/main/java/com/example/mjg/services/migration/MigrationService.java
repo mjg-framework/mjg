@@ -21,14 +21,6 @@ import java.util.function.Consumer;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @Slf4j
 public class MigrationService {
-    private static class InstanceHolder {
-        private static final MigrationService instance = new MigrationService();
-    };
-
-    public static MigrationService _getInstForTesting() {
-        return InstanceHolder.instance;
-    }
-
     @Getter
     private DataStoreRegistry dataStoreRegistry = new DataStoreRegistry();
 

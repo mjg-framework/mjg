@@ -1,5 +1,6 @@
 package com.example.mjg.services.migration.internal.migration_runner;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -9,6 +10,7 @@ import com.example.mjg.annotations.ForEachRecordFrom;
 import com.example.mjg.annotations.MatchWith;
 import com.example.mjg.annotations.TransformAndSaveTo;
 import com.example.mjg.config.Cardinality;
+import com.example.mjg.data.DataFilterSet;
 import com.example.mjg.data.DataPage;
 import com.example.mjg.data.DataStore;
 import com.example.mjg.data.MigratableEntity;
@@ -16,7 +18,6 @@ import com.example.mjg.exceptions.RetriesExhaustedException;
 import com.example.mjg.services.migration.internal.RecordProcessingContext;
 import com.example.mjg.services.migration.internal.fault_tolerance.MigrationErrorInvestigator;
 import com.example.mjg.services.migration.internal.fault_tolerance.MigrationProgressManager;
-import com.example.mjg.services.migration.internal.fault_tolerance.SuccessfulRecordGroup;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
 import com.example.mjg.services.migration.internal.reflective.RForEachRecordFrom;
 import com.example.mjg.services.migration.internal.reflective.RMatchWith;
@@ -111,23 +112,20 @@ public class MigrationRunner {
         this.migrationErrorInvestigator = new MigrationErrorInvestigator(migrationProgressManager, this);
     }
 
-    private final DataStore<MigratableEntity, Object, Object> inputStore;
-    private final DataStore<MigratableEntity, Object, Object> outputStore;
+    private final DataStore<MigratableEntity, Serializable, DataFilterSet> inputStore;
+    private final DataStore<MigratableEntity, Serializable, DataFilterSet> outputStore;
 
 
-    public void restoreProgress(MigrationProgress migrationProgress) {
-        this.migrationErrorInvestigator.restorePreviousProgress(migrationProgress);
-    }
 
     public void run()
     throws RetriesExhaustedException {
         this.migrationErrorInvestigator.startInBackground();
         this.migrationErrorInvestigator.retryPreviouslyFailedRecords();
         
-        DataStore<MigratableEntity, Object, Object> inputStore = getDataStore(
+        DataStore<MigratableEntity, Serializable, DataFilterSet> inputStore = getDataStore(
             rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
         );
-        runInternal(inputStore, Map.of());
+        runInternal(inputStore.matchAll());
 
         migrationErrorInvestigator.join();
         final int numFailures = migrationErrorInvestigator.getNumFailures();
@@ -136,17 +134,11 @@ public class MigrationRunner {
         }
     }
 
-    public void runWithRecordIdIn(Set<Object> recordIds) {
-        runInternal(
-            inputStore,
-            inputStore.getFiltersByIdIn(recordIds)
-        );
+    public void runWithRecordIdIn(Set<Serializable> recordIds) {
+        runInternal(inputStore.matchByIdIn(recordIds));
     }
 
-    private void runInternal(
-        DataStore<MigratableEntity, Object, Object> inputStore,
-        Map<Object, Object> filters
-    ) {
+    private void runInternal(DataFilterSet filterSet) {
         final int INPUT_BATCH_SIZE = rForEachRecordFrom.getForEachRecordFrom().batchSize();
 
         RetryLogic retryLogic = RetryLogic
@@ -157,20 +149,20 @@ public class MigrationRunner {
             )
             .debugContext(
                 "While reading records from store: " + rForEachRecordFrom.getDataStoreReflection().getStoreClass().getCanonicalName()
-                + "\nwith filters: " + filters
+                + "\nwith filterSet: " + filterSet
             );
 
         var getFirstPageOfRecordsWithFilter = retryLogic.withCallback(
-            (Object ignoredArg) -> inputStore.getFirstPageOfRecordsWithFilter(
-                filters,
+            (Object ignoredArg) -> inputStore.getFirstPageOfRecords(
+                filterSet,
                 INPUT_BATCH_SIZE
             )
         );
         var getNextPageOfRecordsAfter = retryLogic.withCallback(
-            inputStore::getNextPageOfRecordsAfter
+            inputStore::getNextPageOfRecords
         );
 
-        DataPage<MigratableEntity, Object, Object> inputPage;
+        DataPage<MigratableEntity, Serializable, DataFilterSet> inputPage;
         try {
             inputPage = getFirstPageOfRecordsWithFilter
                 .apply(null);
@@ -181,7 +173,7 @@ public class MigrationRunner {
         while (inputPage.getSize() > 0) {
             List<MigratableEntity> originalRecords = inputPage.getRecords();
 
-            Set<Object> inputRecordIds = originalRecords
+            Set<Serializable> inputRecordIds = originalRecords
                 .stream()
                 .map(MigratableEntity::getMigratableId)
                 .collect(Collectors.toCollection(HashSet::new));
@@ -212,23 +204,9 @@ public class MigrationRunner {
     }
 
     private void migrateRecords(List<MigratableEntity> inputRecords) {
-        boolean anyFailed = false;
-        AtomicBoolean anyFailedMidOperation = new AtomicBoolean(false);
+        List<RecordProcessingContext> inputContexts = matchAndReduceRunner.run(inputRecords);
+        transformAndSaveRunner.run(inputContexts);
 
-        List<RecordProcessingContext> inputContexts = matchAndReduceRunner.run(anyFailedMidOperation, inputRecords);
-        anyFailed |= anyFailedMidOperation.get();
-        anyFailedMidOperation.set(false);
-        
-        transformAndSaveRunner.run(anyFailedMidOperation, inputContexts);
-        anyFailed |= anyFailedMidOperation.get();
-        anyFailedMidOperation.set(false);
-
-        // NOW REPORT INSIDE transformAndSaveRunner
-        // if (!anyFailed) {
-        //    migrationErrorInvestigator.reportSuccessfulRecords(
-        //        new SuccessfulRecordGroup(inputRecords, this)
-        //    );
-        // }
     }
 
     private static List<MatchWith> buildMatchingPlan(MatchWith[] matchWiths) {
@@ -253,8 +231,8 @@ public class MigrationRunner {
     }
 
     @SuppressWarnings("unchecked")
-    private DataStore<MigratableEntity, Object, Object> getDataStore(String fqcn) {
-        return (DataStore<MigratableEntity, Object, Object>) storeRegistry
+    private DataStore<MigratableEntity, Serializable, DataFilterSet> getDataStore(String fqcn) {
+        return (DataStore<MigratableEntity, Serializable, DataFilterSet>) storeRegistry
             .get(fqcn);
     }
 }

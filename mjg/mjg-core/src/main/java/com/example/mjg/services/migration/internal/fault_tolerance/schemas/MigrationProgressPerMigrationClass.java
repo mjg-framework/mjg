@@ -16,11 +16,11 @@ import java.util.Set;
 public class MigrationProgressPerMigrationClass implements Serializable {
     private String fqcn = "";
 
-    private Set<Object> migratedRecordIds = new HashSet<>();
+    private Set<Serializable> succeededRecordIds = new HashSet<>();
 
     private List<FailedRecord> failedRecords = new ArrayList<>();
 
     public MigrationProgressPerMigrationClass(String fqcn) {
-        this(fqcn, new HashSet<Object>(), new ArrayList<FailedRecord>());
+        this(fqcn, new HashSet<Serializable>(), new ArrayList<FailedRecord>());
     }
 }

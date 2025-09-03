@@ -3,6 +3,8 @@ package com.example.mjg.migration_testing.suite1.data.entities;
 import com.example.mjg.data.MigratableEntity;
 import lombok.*;
 
+import java.io.Serializable;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,7 +22,7 @@ public class StationIndicatorEntity implements MigratableEntity {
     private Integer indicatorId = null;
 
     @Override
-    public Object getMigratableId() {
+    public Serializable getMigratableId() {
         return id;
     }
 

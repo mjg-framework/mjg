@@ -6,6 +6,7 @@ import com.example.mjg.annotations.Migration;
 import com.example.mjg.annotations.TransformAndSaveTo;
 import com.example.mjg.config.Cardinality;
 import com.example.mjg.config.ErrorResolution;
+import com.example.mjg.spring.filtering.SpringRepositoryFilterSet;
 import com.example.mjg.storage.DataStoreRegistry;
 import com.example.mongo_migrate_multids.entity.IndicatorEntity;
 import com.example.mongo_migrate_multids.entity.StationEntity;
@@ -17,8 +18,8 @@ import com.example.mongo_migrate_multids.migrational.datastores.dest.DestStation
 import com.example.mongo_migrate_multids.migrational.datastores.src.SrcIndicatorStore;
 import com.example.mongo_migrate_multids.migrational.datastores.src.SrcStationIndicatorStore;
 import com.example.mongo_migrate_multids.migrational.datastores.src.SrcStationStore;
-import com.example.mongo_migrate_multids.migrational.filtering.FilterIndicatorsBy;
-import com.example.mongo_migrate_multids.migrational.filtering.FilterStationsBy;
+import com.example.mongo_migrate_multids.repository.dest.DestIndicatorRepository;
+import com.example.mongo_migrate_multids.repository.dest.DestStationRepository;
 
 import java.util.List;
 import java.util.Map;
@@ -80,7 +81,7 @@ public class MigrateStationIndicatorsToTW {
 
     // lấy station code từ station id cũ,
     // tức là phải lấy được station ra trước
-    public Map<FilterStationsBy, Object> matchWithSrcStationStore(
+    public SpringRepositoryFilterSet<StationEntity, String> matchWithSrcStationStore(
         StationIndicatorEntity stationIndicator,
         Map<String, Object> aggregates,
         SrcStationStore srcStationStore
@@ -90,8 +91,8 @@ public class MigrateStationIndicatorsToTW {
             // Không gọi repo filter, và cũng không gọi reduce... ở dưới
             return null;
         }
-        return Map.of(
-            FilterStationsBy.ID_IN,
+
+        return SpringRepositoryFilterSet.findAllByIdIn(
             Set.of(ObjectIdHelpers.convertLargeIntegerToStringId(oldStationId))
         );
     }
@@ -106,7 +107,7 @@ public class MigrateStationIndicatorsToTW {
 
     // lấy indicator code từ indicator id cũ,
     // tức là phải lấy được các IndicatorEntity cũ đó trước
-    public Map<FilterIndicatorsBy, Object> matchWithSrcIndicatorStore(
+    public SpringRepositoryFilterSet<IndicatorEntity, String> matchWithSrcIndicatorStore(
         StationIndicatorEntity stationIndicator,
         Map<String, Object> aggregates,
         SrcIndicatorStore srcIndicatorStore
@@ -116,8 +117,7 @@ public class MigrateStationIndicatorsToTW {
             // Không gọi repo filter, và cũng không gọi reduce... ỏ dưới
             return null;
         }
-        return Map.of(
-            FilterIndicatorsBy.ID_IN,
+        return SpringRepositoryFilterSet.findAllByIdIn(
             Set.of(ObjectIdHelpers.convertLargeIntegerToStringId(oldIndicatorId))
         );
     }
@@ -137,7 +137,7 @@ public class MigrateStationIndicatorsToTW {
 
 
     // tra station code lấy được station id mới
-    public Map<FilterStationsBy, Object> matchWithDestStationStore(
+    public SpringRepositoryFilterSet<StationEntity, String> matchWithDestStationStore(
         StationIndicatorEntity stationIndicator,
         Map<String, Object> aggregates,
         DestStationStore destStationStore
@@ -147,8 +147,8 @@ public class MigrateStationIndicatorsToTW {
             // Không có stationCode, không tra được station id mới...
             return null;
         }
-        return Map.of(
-            FilterStationsBy.STATION_CODE_IN,
+        return SpringRepositoryFilterSet.of(
+            DestStationRepository::findAllByStationCodeIn,
             Set.of(stationCode)
         );
     }
@@ -166,7 +166,7 @@ public class MigrateStationIndicatorsToTW {
 
 
     // tra indicator code lấy được indicator id mới
-    public Map<FilterIndicatorsBy, Object> matchWithDestIndicatorStore(
+    public SpringRepositoryFilterSet<IndicatorEntity, String> matchWithDestIndicatorStore(
         StationIndicatorEntity stationIndicator,
         Map<String, Object> aggregates,
         DestIndicatorStore destIndicatorStore
@@ -177,12 +177,11 @@ public class MigrateStationIndicatorsToTW {
             // Không có indicatorCode, nên không tra được indicator id mới...
             return null;
         }
-        return Map.of(
-            FilterIndicatorsBy.INDICATOR_IN_AND_TYPE_IN,
-            new Object[]{
-                Set.of(indicatorCode),
-                Set.of(indicatorType)
-            }
+
+        return SpringRepositoryFilterSet.of(
+            DestIndicatorRepository::findAllByIndicatorInAndIndicatorTypeIn,
+            Set.of(indicatorCode),
+            Set.of(indicatorType)
         );
     }
     public void reduceFromDestIndicatorStore(

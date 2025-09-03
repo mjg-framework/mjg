@@ -1,7 +1,7 @@
 package com.example.mongo_migrate_multids.repository.common;
 
+import com.example.mjg.spring.mongo.repositories.MigratableMongoRepository;
 import com.example.mongo_migrate_multids.entity.StationIndicatorEntity;
-import com.example.mongo_migrate_multids.repository.common.common.MigratableMongoRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

@@ -9,7 +9,7 @@ import com.example.mjg.config.ErrorResolution;
 import com.example.mjg.migration_testing.suite1.data.entities.IndicatorEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationEntity;
 import com.example.mjg.migration_testing.suite1.data.entities.StationIndicatorEntity;
-import com.example.mjg.migration_testing.suite1.data.filtering.FilterIndicatorsBy;
+import com.example.mjg.migration_testing.suite1.data.filtering.IndicatorsFilterSet;
 import com.example.mjg.migration_testing.suite1.data.stores.IndicatorStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore;
@@ -69,7 +69,7 @@ public class M1_PopulatePivotTable_StationIndicators {
         aggregates.put("indicators", new ArrayList<IndicatorEntity>());
     }
 
-    public Map<FilterIndicatorsBy, Object> matchWithIndicatorStore(
+    public IndicatorsFilterSet matchWithIndicatorStore(
         StationEntity record,
         Map<String, Object> aggregates,
         IndicatorStore indicatorStore
@@ -77,7 +77,7 @@ public class M1_PopulatePivotTable_StationIndicators {
         if (!toss("matchWithIndicatorStore")) {
             throw new RuntimeException("Fake error while matching with indicator store :)))");
         }
-        return Map.of(); // get all, no filter
+        return IndicatorsFilterSet.takeAll();
     }
 
     public void reduceFromIndicatorStore(
@@ -117,7 +117,7 @@ public class M1_PopulatePivotTable_StationIndicators {
     }
 
     @Getter
-    private AtomicInteger numTimesHandleDuplicateCalled = new AtomicInteger(0);
+    private final AtomicInteger numTimesHandleDuplicateCalled = new AtomicInteger(0);
     public List<StationIndicatorEntity> handleDuplicate(
         StationEntity inputRecord,
         List<StationIndicatorEntity> outputRecords,

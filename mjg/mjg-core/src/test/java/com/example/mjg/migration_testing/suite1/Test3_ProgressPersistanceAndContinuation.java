@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.example.mjg.migration_testing.suite1.utils.MigrationServiceSingleton;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +35,6 @@ import com.example.mjg.migration_testing.suite1.data.stores.StationIndicatorStor
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore;
 import com.example.mjg.migration_testing.suite1.data.stores.StationStore2;
 import com.example.mjg.migration_testing.suite1.migrations.M1_PopulatePivotTable_StationIndicators;
-import com.example.mjg.services.migration.MigrationService;
 import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
 import com.example.mjg.utils.ObjectMapperFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -164,7 +164,7 @@ public class Test3_ProgressPersistanceAndContinuation {
 
         try {
             AtomicInteger runIndex = new AtomicInteger(0);
-            MigrationService._getInstForTesting().addProgressPersistenceCallback(
+            MigrationServiceSingleton.getInstance().addProgressPersistenceCallback(
                 migrationProgress -> {
                     Test3_ProgressPersistanceAndContinuation.saveMigrationProgressToFile(
                         migrationProgress,
@@ -187,7 +187,7 @@ public class Test3_ProgressPersistanceAndContinuation {
                     M1_PopulatePivotTable_StationIndicators.disableFailRandomly();
                 }
 
-                MigrationService._getInstForTesting().run(progress);
+                MigrationServiceSingleton.getInstance().run(progress);
 
                 progress = Test3_ProgressPersistanceAndContinuation.loadMigrationProgressFromFile("migration-progress-test-3-run-" + i + ".json");
 

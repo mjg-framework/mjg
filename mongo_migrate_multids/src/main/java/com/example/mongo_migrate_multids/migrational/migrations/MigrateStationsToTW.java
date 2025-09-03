@@ -8,6 +8,7 @@ import com.example.mjg.annotations.Migration;
 import com.example.mjg.annotations.TransformAndSaveTo;
 import com.example.mjg.config.Cardinality;
 import com.example.mjg.config.ErrorResolution;
+import com.example.mjg.spring.filtering.SpringRepositoryFilterSet;
 import com.example.mjg.storage.DataStoreRegistry;
 import com.example.mongo_migrate_multids.entity.AreaEntity;
 import com.example.mongo_migrate_multids.entity.StationEntity;
@@ -16,7 +17,7 @@ import com.example.mongo_migrate_multids.migrational.datastores.dest.DestAreaSto
 import com.example.mongo_migrate_multids.migrational.datastores.dest.DestStationStore;
 import com.example.mongo_migrate_multids.migrational.datastores.src.SrcAreaStore;
 import com.example.mongo_migrate_multids.migrational.datastores.src.SrcStationStore;
-import com.example.mongo_migrate_multids.migrational.filtering.FilterAreasBy;
+import com.example.mongo_migrate_multids.repository.dest.DestAreaRepository;
 
 @Migration
 @ForEachRecordFrom(
@@ -50,7 +51,7 @@ public class MigrateStationsToTW {
         aggregates.put("newAreaIds", new HashSet<String>());
     }
 
-    public Map<FilterAreasBy, Object> matchWithSrcAreaStore(
+    public SpringRepositoryFilterSet<AreaEntity, String> matchWithSrcAreaStore(
         StationEntity station,
         Map<String, Object> aggregates,
         SrcAreaStore srcAreaStore
@@ -63,10 +64,7 @@ public class MigrateStationsToTW {
             areaIds.add(station.getAreaId());
         }
 
-        return Map.of(
-            FilterAreasBy.ID_IN,
-            areaIds
-        );
+        return SpringRepositoryFilterSet.findAllByIdIn(areaIds);
     }
 
     public void reduceFromSrcAreaStore(
@@ -84,7 +82,7 @@ public class MigrateStationsToTW {
         }
     }
 
-    public Map<FilterAreasBy, Object> matchWithDestAreaStore(
+    public SpringRepositoryFilterSet<AreaEntity, String> matchWithDestAreaStore(
         StationEntity station,
         Map<String, Object> aggregates,
         DestAreaStore destAreaStore
@@ -92,10 +90,7 @@ public class MigrateStationsToTW {
         @SuppressWarnings("unchecked")
         Set<String> matchingAreaCodes = (Set<String>) aggregates.get("areaCodes");
 
-        return Map.of(
-            FilterAreasBy.AREA_CODE_IN,
-            matchingAreaCodes
-        );
+        return SpringRepositoryFilterSet.of(DestAreaRepository::findAllByAreaCodeIn, matchingAreaCodes);
     }
 
     public void reduceFromDestAreaStore(
