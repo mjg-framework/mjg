@@ -2,7 +2,6 @@ package com.example.mjg.services.migration.internal.migration_runner;
 
 import java.io.Serializable;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import com.example.mjg.algorithms.retrying.RetryLogic;
@@ -18,7 +17,6 @@ import com.example.mjg.exceptions.RetriesExhaustedException;
 import com.example.mjg.services.migration.internal.RecordProcessingContext;
 import com.example.mjg.services.migration.internal.fault_tolerance.MigrationErrorInvestigator;
 import com.example.mjg.services.migration.internal.fault_tolerance.MigrationProgressManager;
-import com.example.mjg.services.migration.internal.fault_tolerance.schemas.MigrationProgress;
 import com.example.mjg.services.migration.internal.reflective.RForEachRecordFrom;
 import com.example.mjg.services.migration.internal.reflective.RMatchWith;
 import com.example.mjg.services.migration.internal.reflective.RMigrationUtils;

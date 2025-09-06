@@ -3,6 +3,8 @@
 mjg is a Data Migration Framework for Java
 applications.
 
+**For Spring users:** [see here](./docs/spring/README.md)
+
 ## Compilation
 
 ### Stale Compiler State

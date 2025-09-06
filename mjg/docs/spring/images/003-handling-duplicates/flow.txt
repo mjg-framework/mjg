@@ -1,0 +1,32 @@
+
+        |———————————————> transform()
+        |                     |
+        |                     ↓
+     reduce()      (destination data source)
+        ↑                     |
+        |                     |
+     match()   <all records successfully saved ?>
+        ↑                     |            |
+        |                    YES           NO
+     load...                  |            ↳_______
+        ↑                     ↓                    |
+        |             move to next record          |
+        |                  |   ↑   ↑               ↓
+        |__________________|   |   |        handleDuplicate()
+                               |   |             / | \
+                               |   |            /  |  \
+                        _______|   |           /   |   \
+                        |          |          /    |     null ———————————————————|
+                        |          |         /     |                             |
+                    REPORT ERROR   |←———— empty  non-empty                       |
+                        ↑          ↑      list     list —————|                   |
+                        |          |                         |                   |
+                        |          |                         ↓                   |
+                        |          |             (destination data source)       |
+                        |          |                         |                   |
+                        |          |                         |                   |
+                        |          |———YES——— <all records successfully saved ?> |
+                        |                                    |                   |
+                        |←——————————————————————————————————NO                   |
+                        ↑                                                        |
+                        |________________________________________________________|
