@@ -1,0 +1,5 @@
+digraph G {
+  graph [splines=true]
+  "...Local\nTo\nRemote" -> "...Remote\nTo\nLocal" [constraint=false, minlen=2]
+  "...Remote\nTo\nLocal" -> "...Local\nTo\nRemote" [constraint=false, minlen=2]
+}
