@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
 public @interface TransformAndSaveTo {
     Class<? extends DataStore<? extends MigratableEntity, ? extends Serializable, ? extends DataFilterSet>> value();
 
-    Cardinality cardinality() default Cardinality.EXACTLY_ONE;
+    Cardinality cardinality() default Cardinality.ZERO_OR_MORE;
 
     ErrorResolution inCaseOfError() default @ErrorResolution;
 

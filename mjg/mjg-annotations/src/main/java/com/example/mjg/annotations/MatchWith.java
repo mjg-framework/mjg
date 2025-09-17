@@ -15,7 +15,7 @@ import java.lang.annotation.*;
 public @interface MatchWith {
     Class<? extends DataStore<? extends MigratableEntity, ? extends Serializable, ? extends DataFilterSet>> value();
 
-    Cardinality cardinality() default Cardinality.EXACTLY_ONE;
+    Cardinality cardinality() default Cardinality.ZERO_OR_MORE;
 
     ErrorResolution inCaseOfError() default @ErrorResolution;
 
