@@ -569,6 +569,12 @@ public class MyMigrateService {
         }
         // END SAFETY MEASURE
 
+        // Set the new timestamp!
+        migrationProgress.getMetadata().setTimestamp(
+            LocalDateTime.now()
+        );
+
+
         return migrationProgress;
     }
 

@@ -348,6 +348,10 @@ private static MigrationProgress loadMigrationProgress() {
         throw new RuntimeException("Could not load migration progress from file: " + MIGRATION_PROGRESS_FILE_PATH, e);
     }
 
+    migrationProgress.getMetadata().setTimestamp(
+        LocalDateTime.now()
+    );
+
     return migrationProgress;
 }
 ```

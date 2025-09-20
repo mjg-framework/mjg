@@ -7,6 +7,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -149,6 +150,11 @@ public class Test3_ProgressPersistanceAndContinuation {
         
         try {
             MigrationProgress migrationProgress = objectMapper.readValue(new File(filePath), MigrationProgress.class);
+
+            migrationProgress.getMetadata().setTimestamp(
+                    LocalDateTime.now()
+            );
+
             return migrationProgress;
         } catch (IOException e) {
             e.printStackTrace();
