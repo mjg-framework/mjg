@@ -169,7 +169,7 @@ type MigrationProgress_ObjectSchema = {
         },
     },
     
-    "fataLErrors": Array<string>,
+    "fatalErrors": Array<string>,
 }
 ```
 

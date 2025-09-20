@@ -7,6 +7,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -179,6 +180,10 @@ public class Test4_HandleIgnoredRecordsInRestoredProgress {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+
+        migrationProgress.getMetadata().setTimestamp(
+            LocalDateTime.now()
+        );
 
         return migrationProgress;
     }

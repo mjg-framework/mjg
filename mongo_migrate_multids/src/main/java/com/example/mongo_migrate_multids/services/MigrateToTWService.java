@@ -4,6 +4,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 import com.example.mjg.storage.DataStoreRegistry;
@@ -99,6 +100,10 @@ public class MigrateToTWService {
                 log.warn("Could not backup previous migration progress file.");
             }
         }
+
+        migrationProgress.getMetadata().setTimestamp(
+            LocalDateTime.now()
+        );
 
         return migrationProgress;
     }
