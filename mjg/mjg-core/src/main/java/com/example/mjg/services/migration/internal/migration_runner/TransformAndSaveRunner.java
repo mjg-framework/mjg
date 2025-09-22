@@ -13,6 +13,7 @@ import com.example.mjg.services.migration.internal.fault_tolerance.SuccessfulRec
 import com.example.mjg.services.migration.internal.reflective.RTransformAndSaveTo;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Serializable;
@@ -39,6 +40,7 @@ class TransformAndSaveRunner {
     @AllArgsConstructor
     private static class RecordOutputContext {
         private MigratableEntity inputRecord;
+        @Setter
         private List<MigratableEntity> outputRecords;
     }
 
@@ -130,11 +132,7 @@ class TransformAndSaveRunner {
                         throw e;
                     }
                     
-                    // TODO: This trick will only work if we run everything
-                    // TODO: in the same thread (which we currently do, but
-                    // TODO: not so sure in the future!)
-                    ctx.getOutputRecords().clear();
-                    ctx.getOutputRecords().addAll(newOutputRecords);
+                    ctx.setOutputRecords(newOutputRecords);
 
                     // further exception...
                     migrationRunner.getOutputStore()

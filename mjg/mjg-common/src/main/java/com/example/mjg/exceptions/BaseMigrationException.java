@@ -10,6 +10,6 @@ public class BaseMigrationException extends Exception {
     }
 
     public BaseMigrationException(Throwable cause) {
-        super(cause);
+        super(cause.getMessage(), cause);
     }
 }

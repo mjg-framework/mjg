@@ -1,6 +1,9 @@
 spring:
   application:
     name: mongo_migrate_multids
+  data:
+    mongodb:
+      auto-index-creation: true
 
 # Configure both source & target here
 data:

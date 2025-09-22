@@ -14,7 +14,7 @@ public class DuplicateDataException extends BaseMigrationException {
     }
 
     public DuplicateDataException(Throwable cause) {
-        super(cause);
+        super(cause.getMessage(), cause);
     }
 
     public DuplicateDataException(String message, Throwable cause) {
