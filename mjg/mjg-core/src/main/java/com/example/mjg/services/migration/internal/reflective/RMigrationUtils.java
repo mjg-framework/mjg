@@ -285,26 +285,60 @@ public class RMigrationUtils {
     }
 
     private Method getMethodBySignatureAndCache(RMethodSignature signature) {
-        Method method;
-        try {
-            method = migrationClass.getMethod(
-                signature.getName(),
-                signature.getParameterTypes().toArray(new Class<?>[0])
-            );
-        } catch (NoSuchMethodException | SecurityException e) {
-            throw new RuntimeException(
-                "Could not extract migration method:\n    "
-                    + signature
-                    + "\nfrom    "
-                    + migrationClass.getCanonicalName(),
+        // Method method;
+        // try {
+        //     method = migrationClass.getMethod(
+        //         signature.getName(),
+        //         signature.getParameterTypes().toArray(new Class<?>[0])
+        //     );
+        // } catch (NoSuchMethodException | SecurityException e) {
+        //     throw new RuntimeException(
+        //         "Could not extract migration method:\n    "
+        //             + signature
+        //             + "\nfrom    "
+        //             + migrationClass.getCanonicalName(),
 
-                e
-            );
+        //         e
+        //     );
+        // }
+
+        // methodCache.put(signature.getName(), method);
+
+        // return method;
+
+        // Now look up by name + parameter count.
+        // This is because parameter types may involve generics,
+        // and at runtime they may be erased.
+        // As a result, overloaded methods, with the same number of parameters, are forbidden.
+
+        Method found = null;
+        for (Method m : migrationClass.getMethods()) {
+            if (!m.getName().equals(signature.getName())) {
+                continue;
+            }
+            if (m.getParameterCount() != signature.getParameterTypes().size()) {
+                continue;
+            }
+
+            if (found != null) {
+                throw new RuntimeException(
+                        "Overloaded methods with name '" + signature.getName()
+                                + "' are not supported in class "
+                                + migrationClass.getCanonicalName());
+            }
+            found = m;
         }
 
-        methodCache.put(signature.getName(), method);
+        if (found == null) {
+            throw new RuntimeException(
+                    "Could not extract migration method:\n    "
+                            + signature
+                            + "\nfrom    "
+                            + migrationClass.getCanonicalName());
+        }
 
-        return method;
+        methodCache.put(signature.getName(), found);
+        return found;
     }
 
     private Object invokeMethod(Method method, Object... args) {

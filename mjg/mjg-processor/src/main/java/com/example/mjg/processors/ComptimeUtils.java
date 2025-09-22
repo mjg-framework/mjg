@@ -3,6 +3,7 @@ package com.example.mjg.processors;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
@@ -89,35 +90,36 @@ public class ComptimeUtils {
     public static boolean methodMatchesPrototypeAndIsPublic(
             ProcessingEnvironment processingEnv,
             MethodPrototype prototype,
-            ExecutableElement method
+            ExecutableElement method,
+            ExecutableType resolvedMethod
     ) {
         return method.getModifiers().contains(Modifier.PUBLIC) && methodMatchesPrototype(
                 processingEnv,
                 prototype,
-                method
+                resolvedMethod
         );
     }
 
     public static boolean methodMatchesPrototype(
             ProcessingEnvironment processingEnv,
             MethodPrototype prototype,
-            ExecutableElement method
+            ExecutableType resolvedMethod
     ) {
         Types typeUtils = processingEnv.getTypeUtils();
 
         // Check return value
-        if (!typeUtils.isSameType(method.getReturnType(), prototype.getReturnType())) {
+        if (!typeUtils.isSameType(resolvedMethod.getReturnType(), prototype.getReturnType())) {
             return false;
         }
 
         // Check parameters
         final int N = prototype.getParameterTypes().size();
-        if (N != method.getParameters().size()) {
+        if (N != resolvedMethod.getParameterTypes().size()) {
             return false;
         }
 
         for (int i = 0; i < N; i++) {
-            TypeMirror methodParamType = method.getParameters().get(i).asType();
+            TypeMirror methodParamType = resolvedMethod.getParameterTypes().get(i);
             TypeMirror prototypeParamType = prototype.getParameterTypes().get(i);
 
             if (!typeUtils.isSameType(methodParamType, prototypeParamType)) {

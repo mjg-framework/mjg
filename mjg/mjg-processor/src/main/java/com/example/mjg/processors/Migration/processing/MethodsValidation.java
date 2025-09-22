@@ -8,12 +8,14 @@ import com.example.mjg.processors.Migration.ProcessedAnnotation;
 import lombok.Getter;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
@@ -103,18 +105,49 @@ public class MethodsValidation {
                 Collectors.groupingBy(MethodPrototype::getName, Collectors.toSet())
             );
 
-        for (Element enclosed : migrationClass.getEnclosedElements()) {
-            if (enclosed.getKind() == ElementKind.METHOD) {
-                ExecutableElement method = (ExecutableElement) enclosed;
-                String name = method.getSimpleName().toString();
+        // for (Element enclosed : migrationClass.getEnclosedElements()) {
+        //     if (enclosed.getKind() == ElementKind.METHOD) {
+        //         ExecutableElement method = (ExecutableElement) enclosed;
+        //         String name = method.getSimpleName().toString();
 
-                Set<MethodPrototype> matchingPrototypes = allPrototypesByNameMap.get(name);
+        //         Set<MethodPrototype> matchingPrototypes = allPrototypesByNameMap.get(name);
 
-                if (matchingPrototypes != null) {
-                    for (MethodPrototype matchingPrototype : matchingPrototypes) {
-                        if (ComptimeUtils.methodMatchesPrototypeAndIsPublic(processingEnv, matchingPrototype, method)) {
-                            remainingMethodPrototypes.remove(matchingPrototype);
-                        }
+        //         if (matchingPrototypes != null) {
+        //             for (MethodPrototype matchingPrototype : matchingPrototypes) {
+        //                 if (ComptimeUtils.methodMatchesPrototypeAndIsPublic(processingEnv, matchingPrototype, method)) {
+        //                     remainingMethodPrototypes.remove(matchingPrototype);
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+
+        DeclaredType migrationDeclaredType = (DeclaredType) migrationClass.asType();
+
+        for (ExecutableElement method : ElementFilter.methodsIn(
+            elementUtils.getAllMembers(migrationClass)
+        )) {
+            // Skip abstract methods
+            if (method.getModifiers().contains(Modifier.ABSTRACT)) {
+                continue;
+            }
+            // Rebind the method to this class context (substitutes generics)
+            ExecutableType resolvedMethod = (ExecutableType) typeUtils.asMemberOf(
+                migrationDeclaredType, method
+            );
+
+            String name = method.getSimpleName().toString();
+            Set<MethodPrototype> matchingPrototypes = allPrototypesByNameMap.get(name);
+
+            if (matchingPrototypes != null) {
+                for (MethodPrototype matchingPrototype : matchingPrototypes) {
+                    if (ComptimeUtils.methodMatchesPrototypeAndIsPublic(
+                        processingEnv,
+                        matchingPrototype,
+                        method,
+                        resolvedMethod
+                    )) {
+                        remainingMethodPrototypes.remove(matchingPrototype);
                     }
                 }
             }
